@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Eco Cup Live Scores</title>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+/* Read-only live scoreboard for members: reads game night results, never writes. */
+:root{
+  --bg:#f3f6f4; --surface:#ffffff; --fg:#14201a; --muted:#5c6b63; --line:#d8e0db;
+  --c0:#1f6fd1; --c1:#d9531e; --c2:#7b4fc9; --c3:#0f8a7e; --c4:#c2357a; --c5:#7a7a12;
+  --accent:#1d7a4a; --danger:#b4232c; --hl:#eef3f0; --tint:14%;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1512; --surface:#18211c; --fg:#e7efe9; --muted:#97a69d; --line:#2a352f;
+  --c0:#5aa2f5; --c1:#f08a5d; --c2:#ad8cf0; --c3:#3fc2b2; --c4:#f07ab3; --c5:#c7c74a;
+  --accent:#4cc185; --danger:#f0727a; --hl:#223029; --tint:18%; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1512; --surface:#18211c; --fg:#e7efe9; --muted:#97a69d; --line:#2a352f;
+  --c0:#5aa2f5; --c1:#f08a5d; --c2:#ad8cf0; --c3:#3fc2b2; --c4:#f07ab3; --c5:#c7c74a;
+  --accent:#4cc185; --danger:#f0727a; --hl:#223029; --tint:18%; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--fg);font:16px/1.4 var(--body);margin:0;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 60px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.wrap{max-width:640px;margin:0 auto}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:12px 10px;border-bottom:1px solid var(--line)}
+h1{font:700 26px/1 var(--display);letter-spacing:.01em;margin:0 0 4px;text-transform:uppercase}
+.sub{color:var(--muted);font-size:13px;display:flex;gap:8px;align-items:center}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:none}
+.dot.live{background:var(--accent)}
+nav{display:flex;gap:6px;margin-top:10px}
+nav button{flex:1;padding:10px 4px;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:8px;font:600 16px var(--body)}
+nav button[aria-selected="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+section{padding-top:14px}
+button{cursor:pointer;font-family:inherit}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.lbl{font:700 15px var(--display);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 6px}
+.small{font-size:13px;color:var(--muted)}
+.games{list-style:none;padding:0;margin:0;display:grid;gap:10px}
+.games>li{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px}
+.ghead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
+.ghead b{font:700 19px var(--display);text-transform:uppercase}
+.gl{font-size:14px;overflow-wrap:anywhere;margin:2px 0}
+.gl .k{font:700 14px var(--display);text-transform:uppercase;letter-spacing:.04em;color:var(--c)}
+.gl .w{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-left:4px;color:var(--c)}
+.gfoot{display:flex;justify-content:flex-end;gap:8px;margin-top:10px;flex-wrap:wrap}
+.wsel{display:flex;gap:6px;margin:4px 0 0;align-items:center;flex-wrap:wrap}
+.wsel button{--c:var(--c0);border:1px solid var(--line);background:var(--bg);color:var(--muted);border-radius:8px;padding:8px 12px;font-weight:600}
+.wsel button.on{background:var(--c);border-color:var(--c);color:#fff}
+.empty{padding:20px;text-align:center;color:var(--muted);background:var(--surface);border:1px dashed var(--line);border-radius:12px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:9;background:var(--fg);color:var(--bg);padding:10px 14px;border-radius:10px;display:flex;gap:12px;align-items:center;max-width:calc(100% - 32px)}
+.toast button{background:none;border:0;color:var(--bg);font-weight:700;text-decoration:underline}
+#copytext{width:100%;min-height:120px;margin-top:8px;font:14px var(--body);background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:8px}
+
+/* Game night additions */
+.rule{font-size:14px;color:var(--muted);margin:-4px 0 12px}
+.ord{display:grid;gap:6px;margin-bottom:12px}
+.ord button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--fg);font:600 16px var(--body)}
+.ord button .pl{min-width:46px;font:700 18px/1 var(--display);text-transform:uppercase;color:var(--muted)}
+.ord button .nm{flex:1;min-width:0;overflow-wrap:anywhere}
+.ord button .tk{font:600 14px var(--body);color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.ord button.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) var(--tint),var(--surface))}
+.ord button.on .pl{color:var(--accent)}
+.savebtn{width:100%;padding:18px 8px;border-radius:12px;border:0;color:#fff;background:var(--accent);font:700 22px/1 var(--display);text-transform:uppercase;letter-spacing:.04em}
+.savebtn:disabled{opacity:.5}
+.res{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.res li{display:flex;gap:8px;font-size:14px;align-items:baseline}
+.res .pl{width:34px;flex:none;font:700 14px var(--display);text-transform:uppercase;color:var(--muted)}
+.res .nm{flex:1;min-width:0;overflow-wrap:anywhere}
+.res .nm small{color:var(--muted)}
+.res .tk{white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:600}
+.up{color:var(--accent)} .down{color:var(--danger)}
+table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden;font-variant-numeric:tabular-nums}
+th,td{padding:10px 6px;text-align:right;border-bottom:1px solid var(--line);font-size:15px}
+th{font:700 14px var(--display);text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+th:first-child,td:first-child{text-align:left;white-space:nowrap}
+tr:last-child td{border-bottom:0}
+td.big{font:700 20px var(--display)}
+details{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:8px}
+summary{font-weight:600;cursor:pointer}
+details .res{margin-top:8px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.chips button{border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:999px;padding:8px 13px;font:600 15px var(--body)}
+.chips button.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+/* Live board */
+.games>li.fresh{animation:fresh 2.5s ease-out}
+@keyframes fresh{from{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 35%,transparent)}to{}}
+tr.fresh td{animation:freshrow 2.5s ease-out}
+@keyframes freshrow{from{background:color-mix(in srgb,var(--accent) 22%,var(--surface))}to{}}
+.note{font-size:13px;color:var(--muted);margin:0 0 10px}
+.ro{font-size:12px;font-weight:600;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:1px 8px;margin-left:auto;white-space:nowrap}
+@media (prefers-reduced-motion:reduce){.games>li.fresh,tr.fresh td{animation:none}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+<header>
+  <h1>Eco Cup Live Scores</h1>
+  <div class="sub"><span class="dot" id="dot"></span><span id="status">Connecting…</span><span class="ro">View only</span></div>
+  <nav role="tablist">
+    <button role="tab" aria-selected="true" data-tab="tok">Tokens</button>
+    <button role="tab" aria-selected="false" data-tab="all">Games <span id="count"></span></button>
+  </nav>
+</header>
+
+<section id="v-tok">
+  <p class="note">Game night, Wed Nov 11. Every team starts with 50 tokens. The podium goes to the most tokens at 10 pm. This page updates by itself as hosts save games.</p>
+  <div id="toktable"></div>
+  <div id="tokdetail"></div>
+</section>
+
+<section id="v-all" hidden>
+  <div class="chips" id="fchips"></div>
+  <ul class="games" id="glist"></ul>
+</section>
+</div>
+
+<script>
+(function(){
+/* Payout table: must match GAMES in game-night/index.html so the numbers agree with the hosts' tracker. */
+const GAMES = [
+  {id:"uno",    name:"Uno",            entry:3, mode:"winner"},
+  {id:"card",   name:"Card game",      entry:3, mode:"winner"},
+  {id:"mk",     name:"Mario Kart",     entry:3, mode:"place", pay:[8,3,1,0], eco:2},
+  {id:"smash4", name:"Smash 4-player", entry:3, mode:"place", pay:[8,3,1,0], eco:2},
+  {id:"smash1", name:"Smash 1v1",      entry:5, mode:"place", pay:[10,0]}
+];
+const START_TOKENS = 50, TEAMS = 9;
+const DB_URL = "https://eco-cup-862f9-default-rtdb.firebaseio.com/";
+const DB_PATH = "/gamenight/results";
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const low=s=>String(s).toLowerCase();
+const G=id=>GAMES.find(g=>g.id===id);
+const ORD=["1st","2nd","3rd","4th","5th","6th"];
+const sgn=n=>n>0?"+"+n:n<0?"−"+(-n):"0";
+const cls=n=>n>0?"up":n<0?"down":"";
+const gname=id=>(G(id)||{name:id||"Untitled"}).name;
+
+/* Same payout maths as the tracker */
+function results(gid, players, order){
+  const d=G(gid), n=players.length;
+  return players.map(p=>{
+    const i=order.indexOf(low(p.name));
+    const back = !d ? 0 : d.mode==="winner" ? (i===0 ? d.entry*n-(n-1) : 1) : (i>=0 ? (d.pay[i]||0) : 0);
+    return {p, place:i>=0?i+1:null, back, net:d?back-d.entry:0, eco:(d&&d.eco&&i===0)?d.eco:0};
+  });
+}
+const complete=(gid,players,order)=>{ const d=G(gid); if(!d) return false; return d.mode==="winner"?order.length===1:order.length===players.length; };
+
+/* ---------- read-only connection: GET + live stream, no writes anywhere on this page ---------- */
+let games={};
+function setStatus(t,live){ $("status").textContent=t; $("dot").className="dot"+(live?" live":""); }
+function watch(cb){
+  const base=DB_URL.replace(/\/+$/,"");
+  let data={};
+  const emit=()=>cb(Object.assign({},data));
+  const LIVE="Live: updates as games are saved";
+  async function poll(){
+    try{ const r=await fetch(base+DB_PATH+".json"); if(!r.ok) throw 0; data=(await r.json())||{}; emit(); setStatus(LIVE,true); }
+    catch(e){ setStatus("Can't reach the scores. Check your connection.",false); }
+  }
+  function stream(){
+    let es; try{ es=new EventSource(base+DB_PATH+".json"); }catch(e){ return; }
+    const apply=(ev,merge)=>{ let m; try{ m=JSON.parse(ev.data); }catch(e){ return; } if(!m) return;
+      const parts=m.path.split("/").filter(Boolean);
+      if(!parts.length){ if(merge) Object.assign(data,m.data||{}); else data=m.data||{}; }
+      else if(parts.length===1){ if(m.data===null) delete data[parts[0]]; else if(merge) data[parts[0]]=Object.assign({},data[parts[0]],m.data); else data[parts[0]]=m.data; }
+      else { poll(); return; }
+      Object.keys(data).forEach(k=>{ if(data[k]===null) delete data[k]; });
+      emit(); setStatus(LIVE,true); };
+    es.addEventListener("put",ev=>apply(ev,false));
+    es.addEventListener("patch",ev=>apply(ev,true));
+    es.onerror=()=>setStatus("Reconnecting…",false);
+  }
+  poll(); stream();
+  setInterval(()=>{ if(!document.hidden) poll(); },20000);
+  document.addEventListener("visibilitychange",()=>{ if(!document.hidden) poll(); });
+}
+
+const arr=v=>Array.isArray(v)?v:(v&&typeof v==="object"?Object.keys(v).sort((a,b)=>a-b).map(k=>v[k]):[]);
+const norm=g=>({game:g.game, players:arr(g.players).filter(Boolean).map(p=>({name:String(p.name||""),team:p.team??null})), order:arr(g.order).map(low), at:g.at||0});
+const sorted=()=>Object.entries(games).filter(([,g])=>g&&typeof g==="object").map(([id,g])=>[id,norm(g)]).sort((x,y)=>x[1].at-y[1].at);
+function numbered(){ const per={}; return sorted().map(([id,g])=>{ per[g.game]=(per[g.game]||0)+1; return [id,g,per[g.game]]; }); }
+
+/* ---------- Games ---------- */
+let filter="", seen=null, lastTotals=null;
+function resultHTML(g){
+  const d=G(g.game);
+  const rs=results(g.game,g.players,g.order).sort((a,b)=>(a.place||99)-(b.place||99));
+  return `<ul class="res">${rs.map(r=>`<li><span class="pl">${r.place?(d&&d.mode==="winner"?"Won":ORD[r.place-1]):""}</span><span class="nm">${esc(r.p.name)} <small>${r.p.team?"Team "+esc(r.p.team):"guest"}</small></span><span class="tk ${cls(r.net)}">${sgn(r.net)}${r.eco?` · +${r.eco} Eco`:""}</span></li>`).join("")}</ul>`;
+}
+function renderGames(){
+  const list=numbered();
+  $("count").textContent=list.length?`(${list.length})`:"";
+  const used=GAMES.map(g=>g.id).filter(id=>list.some(([,g])=>g.game===id));
+  if(filter&&!used.includes(filter)) filter="";
+  $("fchips").innerHTML=used.length>1?`<button data-f="" class="${filter?"":"on"}">All</button>`+used.map(n=>`<button data-f="${n}" class="${filter===n?"on":""}">${esc(gname(n))}</button>`).join(""):"";
+  const shown=list.filter(x=>!filter||x[1].game===filter);
+  $("glist").innerHTML = shown.length ? shown.map(([id,g,k])=>{
+    const fresh=seen&&!seen.has(id);
+    return `<li class="${fresh?"fresh":""}"><div class="ghead"><b>${esc(gname(g.game))} · game ${k}</b><span class="small">${g.at?new Date(g.at).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}):""}</span></div>${resultHTML(g)}</li>`;
+  }).reverse().join("") : `<li class="empty">No games yet. Results show up here as soon as a host saves them.</li>`;
+  seen=new Set(list.map(x=>x[0]));
+}
+$("fchips").addEventListener("click",e=>{ const t=e.target.closest("button"); if(!t) return; filter=t.dataset.f; renderGames(); });
+
+/* ---------- Tokens: same tally as the tracker's Tokens tab ---------- */
+function tally(){
+  const teams={}; for(let t=1;t<=TEAMS;t++) teams[t]={t,net:0,eco:0,games:0,players:{}};
+  const guests={net:0,eco:0,players:{}};
+  sorted().forEach(([,g])=>{ if(!G(g.game)||!complete(g.game,g.players,g.order)) return;
+    results(g.game,g.players,g.order).forEach(r=>{
+      const T=r.p.team&&teams[r.p.team]?teams[r.p.team]:guests;
+      T.net+=r.net; T.eco+=r.eco; if(T.games!==undefined) T.games++;
+      const P=T.players[r.p.name]||(T.players[r.p.name]={name:r.p.name,net:0,eco:0,games:0,wins:0});
+      P.net+=r.net; P.eco+=r.eco; P.games++; if(r.place===1) P.wins++;
+    }); });
+  return {teams:Object.values(teams), guests};
+}
+function renderTokens(){
+  const {teams,guests}=tally();
+  const rows=teams.slice().sort((a,b)=>b.net-a.net||a.t-b.t);
+  let place=0, prev=null; rows.forEach(r=>{ if(r.net!==prev){ place++; prev=r.net; } r.place=place; });
+  const totals={}; rows.forEach(r=>totals[r.t]=r.net+"/"+r.eco);
+  $("toktable").innerHTML=`<table><thead><tr><th>Eco team</th><th>Tokens</th><th>Change</th><th>Eco pts</th><th>Plays</th></tr></thead><tbody>
+    ${rows.map(r=>`<tr class="${lastTotals&&lastTotals[r.t]!==totals[r.t]?"fresh":""}"><td>${r.place<=3?`<b>${ORD[r.place-1]}</b> `:""}Team ${r.t}</td><td class="big">${START_TOKENS+r.net}</td><td class="${cls(r.net)}">${sgn(r.net)}</td><td>${r.eco||""}</td><td>${r.games||""}</td></tr>`).join("")}
+    </tbody></table>`;
+  lastTotals=totals;
+  const open=new Set([...$("tokdetail").querySelectorAll("details[open]")].map(d=>d.dataset.k));
+  const det=t=>{ const ps=Object.values(t.players).sort((a,b)=>b.net-a.net||a.name.localeCompare(b.name));
+    return `<ul class="res">${ps.map(p=>`<li><span class="nm">${esc(p.name)} <small>${p.games} game${p.games===1?"":"s"}${p.wins?`, ${p.wins} won`:""}</small></span><span class="tk ${cls(p.net)}">${sgn(p.net)}${p.eco?` · +${p.eco} Eco`:""}</span></li>`).join("")}</ul>`; };
+  const box=(k,sum,body)=>`<details data-k="${k}"${open.has(String(k))?" open":""}><summary>${sum}</summary>${body}</details>`;
+  $("tokdetail").innerHTML=`<p class="lbl" style="margin-top:16px">Players by team</p>`+
+    teams.filter(t=>t.games).map(t=>box(t.t,`Eco team ${t.t}: ${START_TOKENS+t.net} tokens`,det(t))).join("")+
+    (Object.keys(guests.players).length?box("g","Not on the list (not counted for any team)",det(guests)):"")+
+    (teams.some(t=>t.games)?"":`<p class="small">No games yet.</p>`);
+}
+
+/* ---------- tabs ---------- */
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll("nav button").forEach(x=>x.setAttribute("aria-selected",x===b));
+  ["tok","all"].forEach(t=>$("v-"+t).hidden=b.dataset.tab!==t); window.scrollTo(0,0);
+});
+
+function render(){ renderTokens(); renderGames(); }
+render();
+setStatus("Loading scores…",false);
+watch(o=>{ games=o; render(); });
+})();
+</script>
+
+</body>
+</html>
