@@ -128,7 +128,7 @@ tr.fresh td{animation:freshrow 2.5s ease-out}
 const GAMES = [
   {id:"uno",    name:"Uno",            entry:3, mode:"winner"},
   {id:"card",   name:"Card game",      entry:3, mode:"winner"},
-  {id:"mk",     name:"Mario Kart",     entry:3, mode:"place", pay:[8,3,1,0], eco:2},
+  {id:"mk",     name:"Mario Kart",     entry:3, mode:"place", pay:[8,3,1,0], eco:2, scoredMax:4},
   {id:"smash4", name:"Smash 4-player", entry:3, mode:"place", pay:[8,3,1,0], eco:2},
   {id:"smash1", name:"Smash 1v1",      entry:5, mode:"place", pay:[10,0]}
 ];
@@ -140,7 +140,7 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const low=s=>String(s).toLowerCase();
 const G=id=>GAMES.find(g=>g.id===id);
-const ORD=["1st","2nd","3rd","4th","5th","6th"];
+const ORD=["1st","2nd","3rd","4th","5th","6th","7th","8th"];
 const sgn=n=>n>0?"+"+n:n<0?"−"+(-n):"0";
 const cls=n=>n>0?"up":n<0?"down":"";
 const gname=id=>(G(id)||{name:id||"Untitled"}).name;
@@ -150,6 +150,7 @@ function results(gid, players, order){
   const d=G(gid), n=players.length;
   return players.map(p=>{
     const i=order.indexOf(low(p.name));
+    if(d&&d.scoredMax&&n>d.scoredMax) return {p, place:i>=0?i+1:null, back:d.entry, net:0, eco:0, unscored:true};
     const back = !d ? 0 : d.mode==="winner" ? (i===0 ? d.entry*n-(n-1) : 1) : (i>=0 ? (d.pay[i]||0) : 0);
     return {p, place:i>=0?i+1:null, back, net:d?back-d.entry:0, eco:(d&&d.eco&&i===0)?d.eco:0};
   });
@@ -196,7 +197,7 @@ let filter="", seen=null, lastTotals=null;
 function resultHTML(g){
   const d=G(g.game);
   const rs=results(g.game,g.players,g.order).sort((a,b)=>(a.place||99)-(b.place||99));
-  return `<ul class="res">${rs.map(r=>`<li><span class="pl">${r.place?(d&&d.mode==="winner"?"Won":ORD[r.place-1]):""}</span><span class="nm">${esc(r.p.name)} <small>${r.p.team?"Team "+esc(r.p.team):"guest"}</small></span><span class="tk ${cls(r.net)}">${sgn(r.net)}${r.eco?` · +${r.eco} Eco`:""}</span></li>`).join("")}</ul>`;
+  return `<ul class="res">${rs.map(r=>`<li><span class="pl">${r.place?(d&&d.mode==="winner"?"Won":ORD[r.place-1]):""}</span><span class="nm">${esc(r.p.name)} <small>${r.p.team?"Team "+esc(r.p.team):"guest"}</small></span><span class="tk ${cls(r.net)}">${r.unscored?"":sgn(r.net)}${r.eco?` · +${r.eco} Eco`:""}</span></li>`).join("")}</ul>`;
 }
 function renderGames(){
   const list=numbered();
