@@ -128,7 +128,7 @@ tr.fresh td{animation:freshrow 2.5s ease-out}
 const GAMES = [
   {id:"uno",    name:"Uno",            entry:3, mode:"winner"},
   {id:"card",   name:"Card game",      entry:3, mode:"winner"},
-  {id:"mk",     name:"Mario Kart",     entry:3, mode:"place", pay:[8,3,1,0], eco:2, scoredMax:4},
+  {id:"mk",     name:"Mario Kart",     entry:3, mode:"place", pay:[8,3,1,0], eco:2, scoredOnly:4},
   {id:"smash4", name:"Smash 4-player", entry:3, mode:"place", pay:[8,3,1,0], eco:2},
   {id:"smash1", name:"Smash 1v1",      entry:5, mode:"place", pay:[10,0]}
 ];
@@ -150,7 +150,7 @@ function results(gid, players, order){
   const d=G(gid), n=players.length;
   return players.map(p=>{
     const i=order.indexOf(low(p.name));
-    if(d&&d.scoredMax&&n>d.scoredMax) return {p, place:i>=0?i+1:null, back:d.entry, net:0, eco:0, unscored:true};
+    if(d&&d.scoredOnly&&n!==d.scoredOnly) return {p, place:i>=0?i+1:null, back:d.entry, net:0, eco:0, unscored:true};
     const back = !d ? 0 : d.mode==="winner" ? (i===0 ? d.entry*n-(n-1) : 1) : (i>=0 ? (d.pay[i]||0) : 0);
     return {p, place:i>=0?i+1:null, back, net:d?back-d.entry:0, eco:(d&&d.eco&&i===0)?d.eco:0};
   });
