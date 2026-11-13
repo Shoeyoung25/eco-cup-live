@@ -191,11 +191,12 @@ function revealEggs(s, q, rev) {
 }
 
 /* ---------- media ---------- */
-const mediaCache = {}, loading = {};
+const mediaCache = {}, loading = {}, tries = {};
 function media(key) {
   if (!key) return null;
   if (mediaCache[key]) return mediaCache[key];
-  if (!loading[key]) loading[key] = get(`${MEDIA}/${encodeURIComponent(key)}`).then(m => { mediaCache[key] = m; render(true); return m; }).catch(() => { delete loading[key]; return null; });
+  // not in the database yet (operator still copying it in): try again a few seconds later instead of giving up
+  if (!loading[key]) loading[key] = get(`${MEDIA}/${encodeURIComponent(key)}`).then(m => { if (!m) throw 0; mediaCache[key] = m; render(true); return m; }).catch(() => { tries[key] = (tries[key] || 0) + 1; setTimeout(() => { delete loading[key]; if (tries[key] < 200) media(key); }, 3000); return null; });
   return null;
 }
 // audio: plays twice automatically when the question opens; the operator can trigger a replay
