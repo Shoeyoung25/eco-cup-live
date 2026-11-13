@@ -91,7 +91,7 @@ export function matchText(given, keys) {
     const n = normText(k), ns = n.replace(/ /g, "");
     if (!n) continue;
     if (g === n || gs === ns) return "yes";
-    if (/^\d+$/.test(ns) && /^\d+$/.test(gs)) continue; // numbers must match exactly: 13 is not a typo of 12
+    if (/\d/.test(ns) && ns.replace(/\D/g, "") !== gs.replace(/\D/g, "")) continue; // numbers must match exactly: 13 is not a typo of 12, 9 Mile is not 8 Mile
     const d = lev(gs, ns), tol = tolerance(ns.length);
     if (d <= tol) { best = "close"; continue; }
     if (best === "no" && ((ns.length >= 4 && (gs.includes(ns) || ns.includes(gs)) && gs.length >= 3) || d <= tol * 2 + 1)) best = "maybe";
