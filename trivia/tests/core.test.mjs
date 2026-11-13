@@ -95,3 +95,10 @@ test("tokens", () => {
   
   assert.equal(3 * 10 + 30 + 36 + 40, 136);
 });
+
+test("typed numbers must match exactly", () => {
+  const k = { type: "text", answer: "12", alts: ["twelve"] };
+  assert.equal(C.autoMark(k, "12").ok, true);
+  assert.equal(C.autoMark(k, "Twelve").ok, true);
+  assert.deepEqual(C.autoMark(k, "13"), { ok: false, flag: null });
+});
