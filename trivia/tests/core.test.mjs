@@ -102,3 +102,10 @@ test("typed numbers must match exactly", () => {
   assert.equal(C.autoMark(k, "Twelve").ok, true);
   assert.deepEqual(C.autoMark(k, "13"), { ok: false, flag: null });
 });
+
+test("digits inside typed answers must match exactly", () => {
+  const k = { type: "text", answer: "8 Mile", alts: ["Eight Mile"] };
+  assert.equal(C.autoMark(k, "8mile").ok, true);
+  assert.equal(C.autoMark(k, "eight mile").ok, true);
+  assert.equal(C.autoMark(k, "9 Mile").ok, false);
+});
