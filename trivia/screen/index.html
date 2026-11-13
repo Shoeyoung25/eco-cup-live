@@ -9,83 +9,176 @@
 <link rel="stylesheet" href="../js/base.css">
 <script src="../js/qrcode.js"></script>
 <style>
-/* Big screen: driven entirely by the operator. Shows questions, pictures, plays music, and a live board of who has answered. */
+/* Big screen: driven entirely by the operator. Shows questions, pictures, plays music, a live board of who has answered,
+   and anonymous fun at the reveal. Never shows which team answered what. */
 html,body{height:100%}
 body{overflow:hidden;font-size:clamp(16px,1.6vw,30px)}
+.bg{position:fixed;inset:0;z-index:-1;overflow:hidden}
+.bg i{position:absolute;border-radius:50%;filter:blur(60px);opacity:.16;animation:drift 22s ease-in-out infinite alternate}
+@keyframes drift{from{transform:translate(0,0) scale(1)}to{transform:translate(8vw,-6vh) scale(1.25)}}
 .stage{position:fixed;inset:0;display:grid;grid-template-rows:auto 1fr auto;padding:2.2vw 3vw}
+.tbar{position:fixed;left:0;top:0;height:.6vh;background:var(--accent);transition:width .25s linear;z-index:5}
+.tbar.low{background:var(--danger)}
 .bar{display:flex;justify-content:space-between;align-items:center;gap:2vw}
-.bar .brand{font:700 1.3em var(--display);text-transform:uppercase;letter-spacing:.06em;color:var(--accent)}
-.bar .meta{font:700 1.3em var(--display);text-transform:uppercase;color:var(--muted)}
+.bar .brand{font:700 1.3em var(--display);text-transform:uppercase;letter-spacing:.06em;color:var(--accent);display:flex;gap:.4em;align-items:center}
+.bar .brand .leaf{display:inline-block;animation:wiggle 3s ease-in-out infinite}
+.bar .meta{font:700 1.3em var(--display);text-transform:uppercase;color:var(--muted);display:flex;gap:.8em;align-items:center}
 .center{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:2vh;min-height:0}
 .huge{font:700 6.5vw/1 var(--display);text-transform:uppercase}
 .big{font:700 3.6vw/1.05 var(--display);text-transform:uppercase}
+.emoji{font-size:6vw;line-height:1;animation:floaty 2.4s ease-in-out infinite}
 .qtext{font-size:3vw;font-weight:600;line-height:1.2;max-width:85vw}
 .rules{font-size:2.1vw;text-align:left;margin:0;padding-left:1.2em}
-.rules li{margin:.5vh 0}
-.media{max-width:80vw;max-height:52vh;min-height:0;border-radius:1vw;object-fit:contain}
+.rules li{margin:.6vh 0;animation:rise .5s ease-out both}
+.rules li:nth-child(2){animation-delay:.15s}.rules li:nth-child(3){animation-delay:.3s}
+.media{max-width:80vw;max-height:50vh;min-height:0;border-radius:1vw;object-fit:contain;box-shadow:0 1vw 3vw rgba(0,0,0,.18)}
 .opts{display:grid;grid-template-columns:1fr 1fr;gap:1.2vw;width:min(90vw,1500px)}
-.opts div{display:flex;align-items:center;gap:1vw;border:.25vw solid var(--k);background:color-mix(in srgb,var(--k) 12%,var(--surface));border-radius:1vw;padding:1.2vw 1.5vw;font-size:2.2vw;font-weight:600;text-align:left}
+.opts>div{position:relative;display:flex;align-items:center;gap:1vw;border:.25vw solid var(--k);background:color-mix(in srgb,var(--k) 12%,var(--surface));border-radius:1vw;padding:1.2vw 1.5vw;font-size:2.2vw;font-weight:600;text-align:left;transition:opacity .4s,transform .4s}
 .opts .l{flex:none;width:3.4vw;height:3.4vw;border-radius:.6vw;background:var(--k);color:#fff;display:grid;place-items:center;font:700 2.4vw var(--display)}
-.opts .right{outline:.4vw solid var(--accent);outline-offset:.3vw}
+.opts .right{outline:.45vw solid var(--accent);outline-offset:.35vw;transform:scale(1.03)}
 .opts .dim{opacity:.35}
-.count{font:700 5vw/1 var(--display);min-width:2ch;text-align:center}
-.count.low{color:var(--danger)}
-.ring{display:flex;align-items:center;gap:1.4vw}
+.opts .cnt{margin-left:auto;display:flex;gap:.3vw;align-items:center}
+.opts .cnt i{width:1.1vw;height:1.1vw;border-radius:50%;background:var(--k);animation:pop .4s both}
+.count{font:700 2.6em/1 var(--display);min-width:2ch;text-align:center;color:var(--fg)}
+.count.low{color:var(--danger);animation:pulse 1s ease-in-out infinite}
+.ring{display:flex;align-items:center;gap:2vw}
 .board{display:flex;flex-wrap:wrap;justify-content:center;gap:.8vw;padding-top:1.4vh}
-.chip{min-width:7.5vw;padding:.7vw 1vw;border-radius:.8vw;border:.18vw solid var(--line);background:var(--surface);text-align:center;transition:background .2s,border-color .2s}
-.chip b{display:block;font:700 2.3vw/1 var(--display)}
+.chip{--tc:var(--muted);min-width:7.5vw;padding:.7vw 1vw;border-radius:.8vw;border:.18vw solid var(--line);background:var(--surface);text-align:center;transition:background .25s,border-color .25s,transform .25s}
+.chip b{display:block;font:700 2.3vw/1 var(--display);color:var(--tc)}
 .chip span{display:block;font-size:.85vw;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:12vw}
-.chip.done{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
-.chip.done span{color:var(--accent-fg)}
+.chip.done{background:var(--tc);border-color:var(--tc);transform:translateY(-.4vh)}
+.chip.done b,.chip.done span{color:#fff}
+.chip.just{animation:pop .5s cubic-bezier(.2,1.4,.4,1)}
 .boardlbl{text-align:center;font:700 1em var(--display);text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
-.answer{font:700 4.5vw/1.1 var(--display);color:var(--accent)}
-#qr{background:#fff;padding:1vw;border-radius:1vw;line-height:0}
-#qr svg,#qr img{width:min(26vh,22vw);height:auto}
-.join{font-size:2vw;font-weight:600}
+.answer{font:700 4.5vw/1.1 var(--display);color:var(--accent);animation:pop .6s cubic-bezier(.2,1.4,.4,1) both}
+.stat{font-size:1.7vw;color:var(--muted);animation:rise .5s .3s both}
+.stat b{color:var(--fg)}
+.timesup{font:700 5vw/1 var(--display);text-transform:uppercase;color:var(--danger);animation:stamp .5s cubic-bezier(.2,1.4,.4,1) both;border:.4vw solid var(--danger);border-radius:1vw;padding:.4vw 2vw}
+#qr{background:#fff;padding:1vw;border-radius:1vw;line-height:0;animation:floaty 3s ease-in-out infinite}
+#qr svg{width:min(28vh,22vw);height:auto}
+.join{font-size:2.2vw;font-weight:600}
 table.scores{border-collapse:collapse;font-size:1.7vw;min-width:60vw}
 table.scores th{font:700 1.2em var(--display);text-transform:uppercase;color:var(--muted);padding:.5vw 1.2vw;text-align:center}
 table.scores td{padding:.55vw 1.2vw;border-top:1px solid var(--line);text-align:center}
+table.scores tr{animation:rise .5s both}
 table.scores td.t{text-align:left;font-weight:600}
+table.scores td.t i{display:inline-block;width:.8em;height:.8em;border-radius:50%;margin-right:.5em;vertical-align:middle}
 table.scores td.tot{font:700 1.4em var(--display)}
 table.scores th.sorted,table.scores td.sorted{background:var(--hl)}
+.medal{display:inline-block;width:1.4em;font-size:1.1em}
 .tk{font-size:.7em;color:var(--warn);font-weight:700;margin-left:.2em}
 .blank{position:fixed;inset:0;background:#000;display:grid;place-items:center;color:#2b3a31;font:700 3vw var(--display);text-transform:uppercase;letter-spacing:.1em}
 .start{position:fixed;inset:0;z-index:20;background:var(--bg);display:grid;place-items:center;text-align:center}
 .start button{font-size:28px;padding:20px 40px}
-.audio-ind{font:700 1.4em var(--display);text-transform:uppercase;color:var(--muted);display:flex;gap:.6em;align-items:center}
-.eq{display:inline-flex;gap:.25em;align-items:flex-end;height:1.2em}
-.eq i{width:.3em;background:var(--accent);animation:eq 0.9s ease-in-out infinite}
-.eq i:nth-child(2){animation-delay:.2s}.eq i:nth-child(3){animation-delay:.4s}.eq i:nth-child(4){animation-delay:.1s}
-@keyframes eq{0%,100%{height:.3em}50%{height:1.2em}}
+.audio-ind{font:700 1.6em var(--display);text-transform:uppercase;color:var(--muted);display:flex;gap:.6em;align-items:center}
+.eq{display:inline-flex;gap:.25em;align-items:flex-end;height:1.4em}
+.eq i{width:.35em;border-radius:.1em;background:var(--accent);animation:eq .9s ease-in-out infinite}
+.eq i:nth-child(2){animation-delay:.2s;background:var(--b)}.eq i:nth-child(3){animation-delay:.4s;background:var(--c)}.eq i:nth-child(4){animation-delay:.1s;background:var(--d)}.eq i:nth-child(5){animation-delay:.3s}
+@keyframes eq{0%,100%{height:.3em}50%{height:1.4em}}
 .paused .eq i{animation:none;height:.3em}
 .conn{position:fixed;right:1vw;bottom:1vw;display:flex;gap:.4em;align-items:center;font-size:.8em;color:var(--muted)}
+/* closest wins: anonymous guesses on a number line */
+.nl{position:relative;width:76vw;height:22vh;margin:4vh 0 1vh}
+.nl .axis{position:absolute;left:0;right:0;top:60%;height:.35vw;background:var(--line);border-radius:1vw}
+.nl .end{position:absolute;top:72%;font-size:1.3vw;color:var(--muted);transform:translateX(-50%)}
+.nl .truth{position:absolute;top:8%;bottom:20%;width:.4vw;background:var(--accent);transform:translateX(-50%);border-radius:1vw;animation:rise .6s .9s both}
+.nl .truth span{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);white-space:nowrap;font:700 2.4vw var(--display);color:var(--accent);padding-bottom:.4vh}
+.nl .g{position:absolute;width:1.8vw;height:1.8vw;margin:-.9vw 0 0 -.9vw;border-radius:50%;background:var(--c);border:.2vw solid var(--surface);box-shadow:0 .2vw .6vw rgba(0,0,0,.2);animation:drop .6s cubic-bezier(.2,1.4,.4,1) both}
+@keyframes drop{from{transform:translateY(-14vh);opacity:0}to{transform:none;opacity:1}}
+.nl .g.best{background:var(--accent);width:2.4vw;height:2.4vw;margin:-1.2vw 0 0 -1.2vw}
+.nl .fly{position:absolute;font-size:2.6vw;animation:flyR 2.6s 1.4s ease-in both}
+.nl .fly.left{animation-name:flyL}
+@keyframes flyR{0%{transform:translate(0,0) rotate(0);opacity:1}15%{transform:translate(-1vw,1vh) rotate(10deg)}100%{transform:translate(30vw,-45vh) rotate(-30deg);opacity:0}}
+@keyframes flyL{0%{transform:translate(0,0) rotate(0);opacity:1}100%{transform:translate(-20vw,25vh) rotate(220deg);opacity:0}}
+.gag{font:700 2.2vw var(--display);text-transform:uppercase;color:var(--warn);animation:rise .5s 2.6s both}
+/* hidden easter eggs: a big anonymous pop over everything */
+.egg{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:40}
+.egg b{font:800 7vw/1 var(--display);text-transform:uppercase;letter-spacing:.02em;color:#fff;background:var(--k,var(--accent));padding:1.6vw 3.4vw;border-radius:2vw;box-shadow:0 1.5vw 4vw rgba(0,0,0,.35);animation:stamp .55s cubic-bezier(.2,1.4,.4,1) both;text-align:center;max-width:90vw}
+.egg b small{display:block;font:600 2vw/1.2 var(--body);text-transform:none;letter-spacing:0;opacity:.9;margin-top:.6vw}
+.egg.prats b{font-size:13vw;--k:#d63384;animation:stamp .5s cubic-bezier(.2,1.4,.4,1) both,shake .5s .5s 2}
 </style>
 </head>
 <body>
+<div class="bg" aria-hidden="true"><i style="width:40vw;height:40vw;left:-10vw;top:-10vw;background:var(--a)"></i><i style="width:35vw;height:35vw;right:-8vw;top:20vh;background:var(--b);animation-delay:-6s"></i><i style="width:30vw;height:30vw;left:30vw;bottom:-15vw;background:var(--c);animation-delay:-11s"></i></div>
+<div class="tbar" id="tbar" style="width:0"></div>
 <div class="start" id="start"><div><h1 style="font-size:40px;margin-bottom:10px">Eco Cup Trivia: question screen</h1>
-<p class="muted" style="font-size:20px;max-width:640px">Put this on the projector and press Start so the browser allows sound. Then press F11 (or Ctrl+Cmd+F on a Mac) for full screen.</p>
+<p class="muted" style="font-size:20px;max-width:640px">Put this on the projector and press Start, so the browser allows sound. Then press F11 (or Ctrl+Cmd+F on a Mac) for full screen.</p>
 <button class="btn primary" id="go">Start the screen</button></div></div>
 <div class="stage" id="stage">
-  <div class="bar"><span class="brand">Eco Cup Trivia</span><span class="meta" id="meta"></span></div>
+  <div class="bar"><span class="brand"><span class="leaf">🌿</span>Eco Cup Trivia</span><span class="meta" id="meta"></span></div>
   <div class="center" id="center"></div>
   <div><div class="boardlbl" id="boardlbl"></div><div class="board" id="board"></div></div>
 </div>
 <div class="blank" id="blank" hidden>Eco Cup</div>
+<div class="egg" id="egg" hidden></div>
 <div class="conn"><span class="dot" id="dot"></span><span id="conn"></span></div>
 <audio id="audio" preload="auto"></audio>
 <script type="module">
-import { ROUNDS, round, LETTERS, TOKENS, esc, teamName, playingTeams, fmtScore } from "../js/core.js";
+import { ROUNDS, round, LETTERS, ROUND_EMOJI, esc, teamName, teamColor, playingTeams, pctError, confetti } from "../js/core.js";
 import { live, get, now, syncClock, MEDIA, $ } from "../js/db.js";
 
-let D = {}, OK = false, lastKey = "";
+let D = {}, OK = false, lastKey = "", lastFx = "";
 live((d, ok) => { D = d; OK = ok; render(); });
 syncClock();
 // the click on Start counts as the user gesture browsers need before a page may play sound
 $("go").onclick = () => { $("start").hidden = true; render(true); };
 
+/* ---------- hidden easter eggs (anonymous, one or two per round) ---------- */
+// PRATS: anyone typing prats / pratyush as an answer, any round.
+// R1 quick draw (answer inside 1.2 s) · R2 honest "idk" · R3 rickroll · R4 a 10-point wager missed (operator flags it at reveal)
+// R5 somebody guessed 67 (at reveal; the overshoot gag lives in the number line) · R6 buzzer beater (last second)
+const EGGS = {
+  prats: { text: "PRATS!", cls: "prats" },
+  quick: { text: "🤠 Quick draw!", sub: "Someone answered before the question finished loading", k: "#c77700" },
+  idk: { text: "🤷 Honesty points", sub: "One team has absolutely no idea", k: "#1f6fd1" },
+  rick: { text: "🕺 Never gonna give you up", sub: "Somebody got rickrolled by their own answer", k: "#7b4fc9" },
+  allin: { text: "💸 Poof", sub: "Someone's 10-point wager just vanished", k: "#b4232c" },
+  sixseven: { text: "6️⃣7️⃣", sub: "Somebody guessed 67. Of course they did.", k: "#1b998b" },
+  buzzer: { text: "😅 Buzzer beater!", sub: "Locked in with under a second left", k: "#d63384" }
+};
+const seen = new Set(), fired = new Set(), eggQ = [];
+let primed = false, eggBusy = false;
+setTimeout(() => (primed = true), 2500); // answers already in the database when the page loads don't trigger anything
+const squash = v => String(v ?? "").toLowerCase().normalize("NFD").replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ").trim();
+function egg(id, once) {
+  if (once) { if (fired.has(once)) return; fired.add(once); }
+  eggQ.push(id); if (!eggBusy) nextEgg();
+}
+function nextEgg() {
+  const id = eggQ.shift(), e = EGGS[id], el = $("egg");
+  if (!e) { eggBusy = false; el.hidden = true; return; }
+  eggBusy = true;
+  el.className = "egg " + (e.cls || "");
+  el.innerHTML = `<b style="${e.k ? `--k:${e.k}` : ""}">${esc(e.text)}${e.sub ? `<small>${esc(e.sub)}</small>` : ""}</b>`;
+  el.hidden = false;
+  if (id === "prats") { confetti(innerWidth * 0.2, innerHeight * 0.5, 30); confetti(innerWidth * 0.8, innerHeight * 0.5, 30); }
+  setTimeout(nextEgg, id === "prats" ? 2600 : 3200);
+}
+function watchEggs(s) {
+  const r = s.round, n = s.q, A = D.answers?.[r]?.[n];
+  if (!r || !n || !A) return;
+  for (const [t, a] of Object.entries(A)) {
+    const k = `${r}/${n}/${t}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    if (!primed || !$("start").hidden || !a) continue;
+    const txt = squash(a.v), tap = Number(a.t || a.at || 0);
+    if (/\bprats\b|pratyush/.test(txt)) egg("prats");
+    else if (r === 1 && s.startAt && tap - s.startAt < 1200) egg("quick", `quick${r}`);
+    else if (r === 2 && /^(idk|i dont know|i do not know|no idea|no clue|dunno|pass|nope|\?+|)$/.test(txt) && a.v !== "" && a.v != null) egg("idk", `idk${r}`);
+    else if (r === 3 && /rick ?roll|rick astley|never gonna/.test(txt)) egg("rick", "rick");
+    else if (r === 6 && s.closeAt && s.closeAt - tap < 1000 && s.closeAt - tap >= -1500) egg("buzzer", `buzzer${r}`);
+  }
+}
+function revealEggs(s, q, rev) {
+  if (!rev || !$("start").hidden) return;
+  if (rev.egg && EGGS[rev.egg]) setTimeout(() => egg(rev.egg, `${rev.egg}${s.round}.${s.q}`), 1800); // let the answer land first
+  if (q.type === "number" && Object.values(D.answers?.[s.round]?.[s.q] || {}).some(a => Number(a?.v) === 67) && Number(rev.value) !== 67) setTimeout(() => egg("sixseven", "sixseven"), 3000);
+}
+
 /* ---------- media ---------- */
 const mediaCache = {}, loading = {};
-async function media(key) {
+function media(key) {
   if (!key) return null;
   if (mediaCache[key]) return mediaCache[key];
   if (!loading[key]) loading[key] = get(`${MEDIA}/${encodeURIComponent(key)}`).then(m => { mediaCache[key] = m; render(true); return m; }).catch(() => { delete loading[key]; return null; });
@@ -93,7 +186,7 @@ async function media(key) {
 }
 // audio: plays twice automatically when the question opens; the operator can trigger a replay
 let audioFor = "", plays = 0, replaySeen = 0, gapTimer = null;
-function audioControl(s, q, key) {
+function audioControl(s, q) {
   const a = $("audio");
   const id = `${s.round}.${s.q}`;
   const m = mediaCache[q.media];
@@ -119,16 +212,24 @@ $("audio").addEventListener("ended", () => { if (plays < 2) gapTimer = setTimeou
 $("audio").addEventListener("play", () => render(true));
 $("audio").addEventListener("pause", () => render(true));
 
-/* ---------- board ---------- */
+/* ---------- board: who has answered (never what) ---------- */
+let prevDone = new Set(), prevBoardKind = "";
 function board(kind, s) {
   const r = s.round, n = s.q, teams = playingTeams(D.config);
   let done = () => false, lbl = "";
   if (kind === "token") { done = t => !!D.tokens?.[r]?.[t]; lbl = "Prats token decided"; }
   if (kind === "wager") { done = t => !!D.wagers?.[r]?.[n]?.[t]; lbl = "Weight locked in"; }
   if (kind === "answer") { done = t => !!D.answers?.[r]?.[n]?.[t]; lbl = "Answered"; }
-  if (kind === "joined") { lbl = "Teams"; }
-  const html = kind ? teams.map(t => `<div class="chip ${done(t) ? "done" : ""}"><b>${t}</b><span>${esc(teamName(D.config, t))}</span></div>`).join("") : "";
-  return { html, lbl: kind ? `${lbl}${kind !== "joined" ? ` · ${teams.filter(done).length} of ${teams.length}` : ""}` : "" };
+  if (kind === "joined") lbl = "Teams";
+  const bk = `${kind}${r}.${n}`;
+  if (bk !== prevBoardKind) { prevBoardKind = bk; prevDone = new Set(teams.filter(done)); }
+  const html = kind ? teams.map(t => {
+    const d = done(t), just = d && !prevDone.has(t);
+    return `<div class="chip ${d ? "done" : ""} ${just ? "just" : ""}" style="--tc:${teamColor(t)}"><b>${t}</b><span>${esc(teamName(D.config, t))}</span></div>`;
+  }).join("") : "";
+  prevDone = new Set(teams.filter(done));
+  const all = kind && kind !== "joined" && teams.every(done);
+  return { html, lbl: kind ? `${lbl}${kind !== "joined" ? ` · ${teams.filter(done).length} of ${teams.length}${all ? " · everyone's in! 🎉" : ""}` : ""}` : "" };
 }
 
 /* ---------- scores ---------- */
@@ -140,10 +241,39 @@ function scoresView(s) {
   const sort = s.sort && s.sort !== "total" ? Number(s.sort) : "total";
   const key = t => (sort === "total" ? total(t) : Number(val(t, sort)?.final ?? -999));
   const rows = [...teams].sort((a, b) => key(b) - key(a) || a - b);
+  const vals = [...new Set(rows.map(key))].sort((a, b) => b - a);
+  const medal = t => (pub.length ? ["🥇", "🥈", "🥉"][vals.indexOf(key(t))] || "" : "");
   const sortName = sort === "total" ? "Night total" : `Round ${sort}: ${round(sort).name}`;
-  return `<div class="big">Scores</div><div class="muted" style="font-size:1.4vw">Sorted by ${esc(sortName)}</div>
-    <table class="scores"><thead><tr><th style="text-align:left">Team</th>${ROUNDS.map(R => `<th class="${sort === R.n ? "sorted" : ""}">R${R.n}</th>`).join("")}<th class="${sort === "total" ? "sorted" : ""}">Total</th></tr></thead>
-    <tbody>${rows.map(t => `<tr><td class="t">${esc(teamName(D.config, t))}</td>${ROUNDS.map(R => { const v = val(t, R.n); return `<td class="${sort === R.n ? "sorted" : ""}">${v && D.results[R.n].published ? `${v.final}${v.token ? `<span class="tk">T${v.token}</span>` : ""}` : "–"}</td>`; }).join("")}<td class="tot ${sort === "total" ? "sorted" : ""}">${total(t)}</td></tr>`).join("")}</tbody></table>`;
+  return `<div class="big">🏆 Scores</div><div class="muted" style="font-size:1.4vw">Sorted by ${esc(sortName)} · Eco points</div>
+    <table class="scores"><thead><tr><th style="text-align:left">Team</th>${ROUNDS.map(R => `<th class="${sort === R.n ? "sorted" : ""}">${ROUND_EMOJI[R.n]} R${R.n}</th>`).join("")}<th class="${sort === "total" ? "sorted" : ""}">Total</th></tr></thead>
+    <tbody>${rows.map((t, i) => `<tr style="animation-delay:${i * 0.07}s"><td class="t"><span class="medal">${medal(t)}</span><i style="background:${teamColor(t)}"></i>${esc(teamName(D.config, t))}</td>${ROUNDS.map(R => { const v = val(t, R.n); return `<td class="${sort === R.n ? "sorted" : ""}">${v && D.results[R.n].published ? `${v.final}${v.token ? `<span class="tk">T${v.token}</span>` : ""}` : "–"}</td>`; }).join("")}<td class="tot ${sort === "total" ? "sorted" : ""}">${total(t)}</td></tr>`).join("")}</tbody></table>`;
+}
+
+/* ---------- closest wins: anonymous number line ---------- */
+const OVER = ["🚀 One guess has left the building", "🛸 Somebody aimed for the moon", "🎈 That one just floated away", "📈 Bold strategy", "🌋 Someone went full send"];
+const UNDER = ["🐌 One guess never left the starting line", "🕳️ Somebody dug way too deep", "🧊 That guess was ice cold"];
+function numberLine(r, n, q, rev) {
+  const truth = Number(rev.value), lo = Number(q.min ?? 0), hi = Number(q.max ?? 100), span = hi - lo || 1;
+  const vals = Object.values(D.answers?.[r]?.[n] || {}).map(a => Number(a?.v)).filter(v => isFinite(v)).sort((a, b) => a - b);
+  if (!vals.length || !isFinite(truth)) return "";
+  const pos = v => Math.min(100, Math.max(0, ((v - lo) / span) * 100));
+  const errs = vals.map(v => pctError(v, truth)), best = Math.min(...errs);
+  const wild = v => v > hi || v < lo || pctError(v, truth) >= 100;
+  const seed = r * 31 + n * 7;
+  let dots = "", fly = "", overs = 0, unders = 0;
+  vals.forEach((v, i) => {
+    const y = 60 - ((i * 37) % 5) * 9; // stack dots a little so close guesses don't hide each other
+    if (wild(v)) {
+      const up = v > truth; up ? overs++ : unders++;
+      fly += `<span class="fly ${up ? "" : "left"}" style="left:${up ? 96 : 0}%;top:${y - 10}%;animation-delay:${1.4 + i * 0.15}s">${up ? "🚀" : "🐌"}</span>`;
+      return;
+    }
+    dots += `<span class="g ${errs[i] === best ? "best" : ""}" style="left:${pos(v)}%;top:${y}%;animation-delay:${0.1 + i * 0.08}s"></span>`;
+  });
+  const gag = [overs ? OVER[seed % OVER.length] + (overs > 1 ? ` (×${overs})` : "") : "", unders ? UNDER[seed % UNDER.length] + (unders > 1 ? ` (×${unders})` : "") : ""].filter(Boolean).join(" · ");
+  return `<div class="nl"><div class="axis"></div><span class="end" style="left:0">${esc(lo)}</span><span class="end" style="left:100%">${esc(hi)}</span>
+    <div class="truth" style="left:${pos(truth)}%"><span>${esc(rev.text)}</span></div>${dots}${fly}</div>
+    <div class="stat">Closest guess: <b>${best < 0.05 ? "spot on 🎯" : `${Math.round(best * 10) / 10}% off`}</b> · ${vals.length} guesses</div>${gag ? `<div class="gag">${esc(gag)}</div>` : ""}`;
 }
 
 /* ---------- main view ---------- */
@@ -159,33 +289,49 @@ function qrSVG(text) {
 function view(s) {
   const r = Number(s.round) || 0, n = Number(s.q) || 0, R = r ? round(r) : null;
   const total = Number(s.nq?.[r]) || 0;
-  if (s.screen === "scores") return { meta: "Scores", html: scoresView(s), board: board(null, s) };
+  if (s.screen === "scores") return { meta: "Scores", html: scoresView(s), board: board(null, s), fx: "scores" };
   if (!r || s.phase === "lobby") {
     const url = joinURL();
-    return { meta: "", html: `<div class="huge">Trivia Night</div><div class="ring"><div id="qr">${qrSVG(url)}</div><div style="text-align:left"><div class="join">Scan to join,<br>then tap your team</div><div class="muted" style="font-size:1.3vw;margin-top:1vh;overflow-wrap:anywhere;max-width:40vw">${esc(url.replace(/^https?:\/\//, ""))}</div></div></div>`, board: board("joined", s) };
+    return { meta: "", html: `<div class="huge rise">Trivia Night</div><div class="ring"><div id="qr">${qrSVG(url)}</div><div style="text-align:left"><div class="join">📱 Scan to join,<br>then tap your team</div><div class="muted" style="font-size:1.3vw;margin-top:1vh;overflow-wrap:anywhere;max-width:40vw">${esc(url.replace(/^https?:\/\//, ""))}</div></div></div>`, board: board("joined", s) };
   }
-  const meta = `Round ${r} · ${R.name}`;
-  if (s.phase === "round") return { meta: `Round ${r} of 6`, html: `<div class="huge">${esc(R.name)}</div><ul class="rules">${R.rules.map(x => `<li>${esc(x)}</li>`).join("")}</ul><div class="muted" style="font-size:1.6vw">Decide on your Prats token now</div>`, board: s.tokenLock?.[r] ? board(null, s) : board("token", s) };
-  if (s.phase === "roundEnd") return { meta, html: `<div class="big muted">Round ${r}</div><div class="huge">${esc(R.name)} complete</div>`, board: board(null, s) };
+  const meta = `${ROUND_EMOJI[r]} Round ${r} · ${R.name}`;
+  if (s.phase === "round") return { meta: `Round ${r} of 6`, html: `<div class="emoji">${ROUND_EMOJI[r]}</div><div class="huge pop">${esc(R.name)}</div><ul class="rules">${R.rules.map(x => `<li>${esc(x)}</li>`).join("")}</ul><div class="muted rise" style="font-size:1.6vw;animation-delay:.5s">🪙 Decide on your Prats token now</div>`, board: s.tokenLock?.[r] ? board(null, s) : board("token", s) };
+  if (s.phase === "roundEnd") return { meta, html: `<div class="emoji">🎉</div><div class="big muted">Round ${r}</div><div class="huge pop">${esc(R.name)} complete</div><div class="muted rise" style="font-size:1.6vw;animation-delay:.4s">Check your phone to see how you did</div>`, board: board(null, s), fx: `end${r}` };
   const q = D.q?.[r]?.[n] || {};
   if (q.media) media(q.media); // preload during prep
   if (s.phase === "qprep") {
-    const hint = R.scoring === "wager" && q.hint ? `<div class="muted" style="font-size:1.8vw">Hint</div><div class="big">${esc(q.hint)}</div><div class="muted" style="font-size:1.6vw">Lock in your weight on your phone</div>` : `<div class="muted" style="font-size:1.8vw">Get ready</div>`;
-    return { meta, html: `<div class="huge">Question ${n}${total ? `<span class="muted" style="font-size:.5em"> of ${total}</span>` : ""}</div>${hint}`, board: R.scoring === "wager" ? board("wager", s) : board(null, s) };
+    const wager = R.scoring === "wager";
+    const hint = wager && q.hint ? `<div class="muted" style="font-size:1.8vw">The next question is about</div><div class="big pop" style="color:var(--c)">${esc(q.hint)}</div><div class="muted" style="font-size:1.6vw">🎲 Lock in your weight on your phone</div>` : `<div class="muted rise" style="font-size:1.8vw">Get ready…</div>`;
+    return { meta, html: `<div class="huge pop">Question ${n}${total ? `<span class="muted" style="font-size:.5em"> of ${total}</span>` : ""}</div>${hint}`, board: wager ? board("wager", s) : board(null, s) };
   }
   // open, closed, reveal
   const m = q.media ? mediaCache[q.media] : null;
   const isAudio = q.media && (q.mediaKind === "audio" || m?.type?.startsWith("audio"));
   let mediaHTML = "";
-  if (q.media && !m) mediaHTML = `<div class="muted">Loading ${isAudio ? "audio" : "picture"}…</div>`;
-  else if (m && isAudio) { const a = $("audio"); mediaHTML = `<div class="audio-ind ${a.paused ? "paused" : ""}"><span class="eq"><i></i><i></i><i></i><i></i></span>${a.paused ? (plays >= 2 ? "Played twice" : "Music") : `Playing ${plays} of 2`}</div>`; }
-  else if (m) mediaHTML = `<img class="media" src="${m.data}" alt="">`;
+  if (q.media && !m) mediaHTML = `<div class="muted">Loading ${isAudio ? "music" : "picture"}…</div>`;
+  else if (m && isAudio) { const a = $("audio"); mediaHTML = `<div class="audio-ind ${a.paused ? "paused" : ""}"><span class="eq"><i></i><i></i><i></i><i></i><i></i></span>${a.paused ? (plays >= 2 ? "Played twice" : "🎵 Music") : `Playing ${plays} of 2`}</div>`; }
+  else if (m) mediaHTML = `<img class="media pop" src="${m.data}" alt="">`;
   const rev = s.phase === "reveal" ? D.reveal?.[r]?.[n] : null;
+  const answers = D.answers?.[r]?.[n] || {};
   let opts = "";
-  if (q.type === "mc" && q.options) opts = `<div class="opts">${LETTERS.map((L, i) => `<div class="mc-${L.toLowerCase()} ${rev ? (rev.letter === L ? "right" : "dim") : ""}"><span class="l">${L}</span><span>${esc(q.options[i] ?? "")}</span></div>`).join("")}</div>`;
+  if (q.type === "mc" && q.options) {
+    const counts = {}; Object.values(answers).forEach(a => (counts[a?.v] = (counts[a?.v] || 0) + 1));
+    opts = `<div class="opts">${LETTERS.map((L, i) => `<div class="mc-${L.toLowerCase()} ${rev ? (rev.letter === L ? "right" : "dim") : ""}"><span class="l">${L}</span><span>${esc(q.options[i] ?? "")}</span>${rev ? `<span class="cnt">${"<i></i>".repeat(counts[L] || 0)}</span>` : ""}</div>`).join("")}</div>`;
+  }
   const closed = s.phase !== "open" || (s.closeAt && now() >= s.closeAt);
-  const status = rev ? `<div class="answer">${esc(rev.text)}</div>` : closed ? `<div class="big muted">Time's up</div>` : "";
-  return { meta: `${meta} · Q${n}${total ? ` of ${total}` : ""}`, timer: !closed, html: `${q.text ? `<div class="qtext">${esc(q.text)}</div>` : ""}${mediaHTML}${opts}${status}`, board: board("answer", s) };
+  let status = "";
+  if (rev) {
+    if (q.type === "number") status = numberLine(r, n, q, rev) || `<div class="answer">${esc(rev.text)}</div>`;
+    else {
+      status = `<div class="answer">✅ ${esc(rev.text)}</div>`;
+      const bits = [];
+      if (Number.isFinite(rev.right) && Number.isFinite(rev.answered)) bits.push(rev.right === 0 ? "Nobody got this one 😬" : rev.right === rev.answered && rev.answered > 2 ? "Everyone got it! 🙌" : `<b>${rev.right}</b> of ${rev.answered} team${rev.answered === 1 ? "" : "s"} got it`);
+      if (rev.fastest) bits.push(`fastest correct answer: <b>${rev.fastest} s</b> ⚡`);
+      if (bits.length) status += `<div class="stat">${bits.join(" · ")}</div>`;
+    }
+  } else if (closed) status = `<div class="timesup">Time's up!</div>`;
+  const numberReveal = rev && q.type === "number";
+  return { meta: `${meta} · Q${n}${total ? ` of ${total}` : ""}`, timer: !closed, html: `${q.text ? `<div class="qtext ${s.phase === "open" ? "rise" : ""}">${esc(q.text)}</div>` : ""}${numberReveal ? "" : mediaHTML}${opts}${status}`, board: board("answer", s), fx: rev ? `rev${r}.${n}` : "" };
 }
 
 function render(force) {
@@ -198,16 +344,26 @@ function render(force) {
   audioControl(s, q);
   const v = view(s);
   $("meta").innerHTML = esc(v.meta) + (v.timer ? ` <span class="count" id="count"></span>` : "");
-  const key = v.html;
-  if (force || key !== lastKey) { lastKey = key; $("center").innerHTML = v.html; }
+  if (force || v.html !== lastKey) { lastKey = v.html; $("center").innerHTML = v.html; }
   $("board").innerHTML = v.board.html; $("boardlbl").textContent = v.board.lbl;
+  // one-off celebrations
+  if (v.fx && v.fx !== lastFx && $("start").hidden) {
+    if (v.fx.startsWith("end") || v.fx === "scores") { confetti(innerWidth * 0.3, innerHeight * 0.35, 40); confetti(innerWidth * 0.7, innerHeight * 0.35, 40); }
+    else if (v.fx.startsWith("rev") && D.reveal?.[s.round]?.[s.q]?.right > 0) confetti(innerWidth / 2, innerHeight * 0.55, 30);
+    if (v.fx.startsWith("rev") && primed) revealEggs(s, q, D.reveal?.[s.round]?.[s.q]);
+  }
+  watchEggs(s);
+  lastFx = v.fx || "";
   tick();
 }
 function tick() {
   const s = D.state || {};
+  const open = s.phase === "open" && s.closeAt && s.startAt;
+  const left = open ? Math.max(0, s.closeAt - now()) : 0;
+  $("tbar").style.width = open ? `${(left / Math.max(1, s.closeAt - s.startAt)) * 100}%` : "0";
+  $("tbar").classList.toggle("low", !!open && left < 5000);
   const el = $("count");
   if (!el) return;
-  const left = Math.max(0, (s.closeAt || 0) - now());
   el.textContent = Math.ceil(left / 1000);
   el.classList.toggle("low", left < 5000);
   if (left <= 0) render(true);

@@ -24,6 +24,10 @@ export const ROUNDS = [
     rules: ["Multiple choice locks in the moment you tap", "30 seconds per question", "Correct answers score 500 to 1000: the faster, the more"] },
 ];
 export const round = n => ROUNDS.find(r => r.n === Number(n));
+export const ROUND_EMOJI = { 1: "⚡", 2: "🖼️", 3: "🎵", 4: "🎲", 5: "🎯", 6: "🏁" };
+// one colour per team, readable with white text in light and dark mode
+export const TEAM_COLORS = { 1: "#e4572e", 2: "#1b998b", 3: "#7b4fc9", 4: "#c77700", 5: "#1f6fd1", 6: "#d63384", 7: "#2f8f2f", 8: "#8c5a3c", 9: "#0b8fb0" };
+export const teamColor = t => TEAM_COLORS[t] || "#5c6b63";
 
 export const TOKENS = {
   1: { name: "1st token", title: "Triple or bust", lines: ["Top 4: points ×3", "Outside top 4: −5"] },
@@ -211,3 +215,16 @@ export function playingTeams(config) {
 }
 // Firebase may return arrays as objects; give back a plain array
 export const arr = v => (Array.isArray(v) ? v : v && typeof v === "object" ? Object.keys(v).sort((a, b) => a - b).map(k => v[k]) : []);
+
+// small burst of confetti from a point on the page (DOM only; harmless if called on the server)
+export function confetti(x, y, n = 28, colors = Object.values(TEAM_COLORS)) {
+  if (typeof document === "undefined") return;
+  for (let i = 0; i < n; i++) {
+    const el = document.createElement("i");
+    el.className = "confetti";
+    const ang = Math.random() * Math.PI * 2, dist = 80 + Math.random() * 180;
+    el.style.cssText = `left:${x}px;top:${y}px;background:${colors[i % colors.length]};--dx:${Math.cos(ang) * dist}px;--dy:${Math.sin(ang) * dist + 120}px;--rot:${Math.random() * 720 - 360}deg;animation-delay:${Math.random() * 0.1}s`;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1400);
+  }
+}
