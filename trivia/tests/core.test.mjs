@@ -109,3 +109,13 @@ test("digits inside typed answers must match exactly", () => {
   assert.equal(C.autoMark(k, "eight mile").ok, true);
   assert.equal(C.autoMark(k, "9 Mile").ok, false);
 });
+
+test("exact-spelling questions reject typos", () => {
+  const k = { type: "text", answer: "Pratyush Ashok Anand", alts: [], exact: true };
+  assert.equal(C.autoMark(k, "pratyush ashok anand").ok, true);
+  assert.equal(C.autoMark(k, "Pratyush Ashok Anand.").ok, true);
+  assert.equal(C.autoMark(k, "Prathyush Ashok Anand").ok, false);
+  assert.equal(C.autoMark(k, "Prathyush Ashok Anand").flag, "close");
+  assert.equal(C.autoMark(k, "Pratyush Anand").ok, false);
+  assert.equal(C.autoMark({ ...k, exact: false }, "Prathyush Ashok Anand").ok, true);
+});

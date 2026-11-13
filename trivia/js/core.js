@@ -100,13 +100,15 @@ export function matchText(given, keys) {
 }
 
 /* ---------- marking one answer ---------- */
-// key: the operator's answer key for a question {type:'mc'|'text'|'number', answer, alts:[]}
+// key: the operator's answer key for a question {type:'mc'|'text'|'number', answer, alts:[], exact?:true}
 // returns {ok:true|false, flag:null|'close'|'maybe'}
 export function autoMark(key, value) {
   if (value === undefined || value === null || value === "") return { ok: false, flag: null };
   if (key.type === "mc") return { ok: String(value).toUpperCase() === String(key.answer).toUpperCase(), flag: null };
   if (key.type === "number") return { ok: null, flag: null };
   const m = matchText(value, [key.answer, ...(key.alts || [])]);
+  // exact-spelling questions: a typo is wrong (still flagged so the operator sees it and can overrule)
+  if (key.exact) return { ok: m === "yes", flag: m === "close" || m === "maybe" ? m : null };
   return { ok: m === "yes" || m === "close", flag: m === "close" || m === "maybe" ? m : null };
 }
 // operator override wins over the automatic mark
