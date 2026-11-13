@@ -192,18 +192,10 @@ function revealEggs(s, q, rev) {
 
 /* ---------- media ---------- */
 const mediaCache = {}, loading = {};
-// nothing uploaded under that name: use the copy shipped with the site in ../media/ (key "r2_q1_logo_png" -> r2_q1_logo.png)
-const MIME = { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp", svg: "image/svg+xml", mp3: "audio/mpeg", m4a: "audio/mp4", aac: "audio/aac", wav: "audio/wav", ogg: "audio/ogg" };
-async function builtIn(key) {
-  const x = String(key).match(/_([a-z0-9]+)$/); if (!x || !MIME[x[1]]) return null;
-  const url = new URL(`../media/${key.slice(0, -x[0].length)}.${x[1]}`, location.href).href;
-  const r = await fetch(url, { method: "HEAD", cache: "no-store" }).catch(() => null);
-  return r && r.ok ? { type: MIME[x[1]], data: url } : null;
-}
 function media(key) {
   if (!key) return null;
   if (mediaCache[key]) return mediaCache[key];
-  if (!loading[key]) loading[key] = get(`${MEDIA}/${encodeURIComponent(key)}`).then(m => m || builtIn(key)).then(m => { mediaCache[key] = m; render(true); return m; }).catch(() => { delete loading[key]; return null; });
+  if (!loading[key]) loading[key] = get(`${MEDIA}/${encodeURIComponent(key)}`).then(m => { mediaCache[key] = m; render(true); return m; }).catch(() => { delete loading[key]; return null; });
   return null;
 }
 // audio: plays twice automatically when the question opens; the operator can trigger a replay
