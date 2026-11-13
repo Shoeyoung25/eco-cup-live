@@ -25,6 +25,9 @@ export const ROUNDS = [
 ];
 export const round = n => ROUNDS.find(r => r.n === Number(n));
 export const ROUND_EMOJI = { 1: "⚡", 2: "🖼️", 3: "🎵", 4: "🎲", 5: "🎯", 6: "🏁" };
+// each round's own look: an accent colour and a one-line tagline
+export const ROUND_COLORS = { 1: "#d99a1e", 2: "#2f7fd8", 3: "#8a5cd6", 4: "#c0392b", 5: "#12a08f", 6: "#d63384" };
+export const ROUND_TAG = { 1: "Fastest five score", 2: "Name what you see", 3: "Listen closely", 4: "Bet on what you know", 5: "Get as close as you can", 6: "Speed is everything" };
 // one colour per team, readable with white text in light and dark mode
 export const TEAM_COLORS = { 1: "#e4572e", 2: "#1b998b", 3: "#7b4fc9", 4: "#c77700", 5: "#1f6fd1", 6: "#d63384", 7: "#2f8f2f", 8: "#8c5a3c", 9: "#0b8fb0" };
 export const teamColor = t => TEAM_COLORS[t] || "#5c6b63";

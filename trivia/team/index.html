@@ -15,7 +15,8 @@ header{position:sticky;top:0;z-index:5;background:var(--bg);padding:max(12px,env
 .badge{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:10px;background:var(--tc,var(--accent));color:#fff;font:700 22px var(--display);margin-right:10px;vertical-align:middle;flex:none}
 .tn{display:flex;align-items:center;min-width:0}
 .tn h1{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.emoji{font-size:44px;line-height:1;display:inline-block;animation:floaty 3s ease-in-out infinite}
+.rb{display:inline-grid;place-items:center;min-width:30px;height:26px;padding:0 6px;border-radius:6px;background:var(--rc,var(--accent));color:#fff;font:700 16px var(--display);margin-right:8px;vertical-align:3px}
+.kicker{font:700 13px var(--display);text-transform:uppercase;letter-spacing:.12em;color:var(--rc,var(--muted))}
 .wait{display:flex;gap:6px;justify-content:center;margin-top:12px}
 .wait i{width:8px;height:8px;border-radius:50%;background:var(--tc,var(--accent));animation:pulse 1.2s ease-in-out infinite}
 .wait i:nth-child(2){animation-delay:.2s}.wait i:nth-child(3){animation-delay:.4s}
@@ -46,7 +47,7 @@ input[type=range]{width:100%;height:40px;accent-color:var(--accent)}
 .locked{border:2px solid var(--accent);border-radius:14px;padding:16px;background:color-mix(in srgb,var(--accent) 8%,var(--surface))}
 .locked .k{font:700 14px var(--display);text-transform:uppercase;letter-spacing:.06em;color:var(--accent)}
 .locked .v{font-size:22px;font-weight:600;overflow-wrap:anywhere}
-.locked.fresh{animation:pop .45s cubic-bezier(.2,1.4,.4,1) both}
+.locked.fresh{animation:rise .35s ease-out both}
 .locked.miss{border-color:var(--line);background:var(--surface)}
 .locked.miss .k{color:var(--muted)}
 .tokens{display:grid;gap:10px}
@@ -71,7 +72,7 @@ input[type=range]{width:100%;height:40px;accent-color:var(--accent)}
 </div></header>
 <div class="wrap"><main id="main"></main><p class="muted" style="font-size:13px;margin-top:28px"><a href="../" id="switch" style="color:inherit">Wrong team? Pick again</a></p></div>
 <script type="module">
-import { round, TOKENS, LETTERS, ROUND_EMOJI, allowedTokens, tokensPlayedBefore, teamName, teamColor, esc, fmtScore, confetti } from "../js/core.js";
+import { round, TOKENS, LETTERS, ROUND_COLORS, ROUND_TAG, allowedTokens, tokensPlayedBefore, teamName, teamColor, esc, fmtScore } from "../js/core.js";
 import { live, put, now, syncClock, SERVER_TS, ROOT, $, toast } from "../js/db.js";
 
 const params = new URLSearchParams(location.search);
@@ -109,7 +110,7 @@ function tokenPanel(r) {
   const mine = myToken(r);
   if (mine) {
     const k = Number(mine.k);
-    return `<div class="locked ${fresh ? "fresh" : ""}"><div class="k">🔒 Prats token for this round</div><div class="v">${k ? `${TOKENS[k].name}: ${TOKENS[k].title}` : "No token"}</div></div>`;
+    return `<div class="locked ${fresh ? "fresh" : ""}"><div class="k">Prats token for this round · locked</div><div class="v">${k ? `${TOKENS[k].name}: ${TOKENS[k].title}` : "No token"}</div></div>`;
   }
   if (S().tokenLock?.[r]) return "";
   const played = tokensPlayedBefore(D.tokens, T, r), allowed = allowedTokens(played);
@@ -133,7 +134,7 @@ function wagerPanel(r, n) {
   const mine = myWager(r, n);
   const hint = qpub(r, n).hint;
   const hintHTML = hint ? `<div class="muted" style="font-size:13px">Hint</div><div class="hint">${esc(hint)}</div>` : "";
-  if (mine) return `<section class="card">${hintHTML}<div class="locked ${fresh ? "fresh" : ""}" style="margin-top:10px"><div class="k">🔒 Your weight</div><div class="v">${esc(mine.w)}</div></div></section>`;
+  if (mine) return `<section class="card">${hintHTML}<div class="locked ${fresh ? "fresh" : ""}" style="margin-top:10px"><div class="k">Your weight · locked</div><div class="v">${esc(mine.w)}</div></div></section>`;
   const used = new Set(Object.entries(D.wagers?.[r] || {}).filter(([qn]) => qn !== String(n)).map(([, w]) => Number(w?.[T]?.w)).filter(Boolean));
   return `<section class="card">${hintHTML}
     <h2 style="font-size:22px;margin-top:10px">Pick a weight</h2>
@@ -148,9 +149,9 @@ function answerPad(r, n) {
   if (mine) {
     const shown = q.type === "mc" ? `${esc(mine.v)}${q.options?.[LETTERS.indexOf(mine.v)] ? ": " + esc(q.options[LETTERS.indexOf(mine.v)]) : ""}` : `${esc(mine.v)}${q.unit ? " " + esc(q.unit) : ""}`;
     const waitMsg = isOpen(s) ? "Locked in. Watch the big screen while the others catch up." : "Answers are closed. Next question coming up.";
-    return html + `<div class="locked ${fresh ? "fresh" : ""}"><div class="k">✅ Locked in</div><div class="v">${shown}</div></div><p class="muted center" style="margin:0;font-size:14px">${waitMsg}</p>`;
+    return html + `<div class="locked ${fresh ? "fresh" : ""}"><div class="k">✓ Locked in</div><div class="v">${shown}</div></div><p class="muted center" style="margin:0;font-size:14px">${waitMsg}</p>`;
   }
-  if (!isOpen(s)) return html + `<div class="locked miss"><div class="k">🐢 Too slow</div><div class="v">No answer this time</div></div><p class="muted center" style="margin:0;font-size:14px">Shake it off, next one's coming.</p>`;
+  if (!isOpen(s)) return html + `<div class="locked miss"><div class="k">Time's up</div><div class="v">No answer this time</div></div><p class="muted center" style="margin:0;font-size:14px">Next one's coming.</p>`;
   if (q.type === "mc") {
     const opts = (q.options || []).slice(0, 4);
     html += `<div class="mc">${LETTERS.map((L, i) => `<button class="mc-${L.toLowerCase()} ${pick.mc === L ? "sel" : ""}" data-mc="${L}"><span class="l">${L}</span><span>${esc(opts[i] ?? "")}</span></button>`).join("")}</div>`;
@@ -172,30 +173,30 @@ function answerPad(r, n) {
 
 function resultsPanel(r) {
   const R = round(r), res = D.teamResults?.[r]?.[T];
-  if (!res) return `<section class="card center"><span class="emoji">⏳</span><div class="big" style="margin-top:8px">Round ${r} done</div><p class="muted">The hosts are checking answers. Your result shows up here in a moment.</p><div class="wait"><i></i><i></i><i></i></div></section>`;
+  if (!res) return `<section class="card center"><div class="kicker">Round ${r} complete</div><div class="big" style="margin-top:4px">Checking answers</div><p class="muted">The hosts are checking answers. Your result shows up here in a moment.</p><div class="wait"><i></i><i></i><i></i></div></section>`;
   const frac = res.total ? res.right / res.total : 0;
-  const mood = frac >= 0.8 ? "🔥 On fire!" : frac >= 0.5 ? "👏 Nice work" : frac > 0 ? "💪 Next round's yours" : "🫠 Rough one. Shake it off";
+  const mood = frac >= 0.8 ? "Strong round." : frac >= 0.5 ? "Solid round." : frac > 0 ? "Next round's yours." : "Tough one. Reset and go again.";
   const right = `<div class="muted">You got</div><div class="stat"><span data-count="${Number(res.right) || 0}">0</span> of ${res.total}</div><div class="muted">right this round</div><p style="font-size:20px;font-weight:600;margin:12px 0 0">${R.scoring === "closest" ? "" : mood}</p>`;
   const score = R.scoring === "closest" ? `Total error: <b>${fmtScore(r, res.score)}</b>` : R.scoring === "count" ? "" : `Round score: <b>${fmtScore(r, res.score)}</b>`;
-  return `<section class="card" style="text-align:center"><div class="emoji">${ROUND_EMOJI[r] || ""}</div><div class="big" style="margin:6px 0 10px">Round ${r}: ${esc(R.name)}</div>${R.scoring === "closest" ? "" : right}${score ? `<p style="font-size:20px;margin:12px 0 0">${score}</p>` : ""}</section>`;
+  return `<section class="card" style="text-align:center"><div class="kicker">Round ${r} result</div><div class="big" style="margin:4px 0 10px">${esc(R.name)}</div>${R.scoring === "closest" ? "" : right}${score ? `<p style="font-size:20px;margin:12px 0 0">${score}</p>` : ""}</section>`;
 }
 
 function view() {
   const s = S(), r = Number(s.round) || 0, n = Number(s.q) || 0, R = r ? round(r) : null;
   const total = Number(s.nq?.[r]) || 0;
-  if (!r || s.phase === "lobby") return { key: "lobby", html: `<section class="card center rise"><span class="emoji">🌿</span><div class="big" style="margin-top:8px">You're in, ${esc(teamName(D.config, T))}!</div><p class="muted">Waiting for the hosts to start. Keep this page open, it updates by itself. Everyone on your team can open it on their own phone too.</p><div class="wait"><i></i><i></i><i></i></div></section>` };
+  if (!r || s.phase === "lobby") return { key: "lobby", html: `<section class="card center rise"><div class="kicker">Eco Cup Trivia</div><div class="big" style="margin-top:4px">You're in, ${esc(teamName(D.config, T))}</div><p class="muted">Waiting for the hosts to start. Keep this page open, it updates by itself. Everyone on your team can open it on their own phone too.</p><div class="wait"><i></i><i></i><i></i></div></section>` };
   if (s.phase === "roundEnd") return { key: `end${r}|${JSON.stringify(D.teamResults?.[r]?.[T] || null)}`, html: resultsPanel(r) };
   const tokenOpen = !s.tokenLock?.[r] || myToken(r);
   const tok = tokenOpen ? tokenPanel(r) : "";
   const tokKey = `${s.tokenLock?.[r] ? 1 : 0}|${JSON.stringify(myToken(r) || null)}|${pick.token}`;
   if (s.phase === "round") {
-    return { key: `round${r}|${tokKey}`, html: `<section class="card rise"><div class="muted">Round ${r} of 6</div><div class="big"><span class="emoji" style="font-size:30px;vertical-align:-4px;margin-right:6px">${ROUND_EMOJI[r] || ""}</span>${esc(R.name)}</div><ul class="rules">${R.rules.map(x => `<li>${esc(x)}</li>`).join("")}</ul></section>${tok}` };
+    return { key: `round${r}|${tokKey}`, html: `<section class="card rise"><div class="kicker">Round ${r} of 6</div><div class="big"><span class="rb">R${r}</span>${esc(R.name)}</div><div class="muted" style="margin-top:2px">${esc(ROUND_TAG[r] || "")}</div><ul class="rules">${R.rules.map(x => `<li>${esc(x)}</li>`).join("")}</ul></section>${tok}` };
   }
   if (s.phase === "qprep") {
     const wager = R.scoring === "wager";
     return {
       key: `qprep${r}.${n}|${tokKey}|${wager ? JSON.stringify(myWager(r, n) || null) + pick.w + JSON.stringify(Object.entries(D.wagers?.[r] || {}).map(([k, x]) => [k, x?.[T]?.w])) + qpub(r, n).hint : ""}`,
-      html: `<section class="card"><div class="muted">${esc(R.name)}</div><div class="big">Question ${n}${total ? ` of ${total}` : ""}</div><p class="muted" style="margin:4px 0 0">Get ready… eyes on the big screen 👀</p></section>${wager ? wagerPanel(r, n) : ""}${tok}`,
+      html: `<section class="card"><div class="kicker">${esc(R.name)}</div><div class="big">Question ${n}${total ? ` of ${total}` : ""}</div><p class="muted" style="margin:4px 0 0">Get ready. Eyes on the big screen.</p></section>${wager ? wagerPanel(r, n) : ""}${tok}`,
     };
   }
   // open / closed / reveal
@@ -211,6 +212,7 @@ function render(force) {
   $("dot").className = "dot" + (OK ? " live" : "");
   const s = S(), r = Number(s.round) || 0;
   $("tname").textContent = teamName(D.config, T);
+  document.documentElement.style.setProperty("--rc", ROUND_COLORS[r] || "var(--accent)");
   document.title = `${teamName(D.config, T)} · Eco Cup Trivia`;
   $("where").textContent = OK ? (r ? `Round ${r}` : "Live") : "Reconnecting…";
   // reset unsaved choices when the question or round changes
@@ -226,7 +228,7 @@ function render(force) {
   if (v.key.split("|")[1] === "true" && !wasOpenQ && lastKey) { try { navigator.userActivation?.hasBeenActive && navigator.vibrate && navigator.vibrate([60, 40, 60]); } catch (e) {} }
   lastKey = v.key;
   $("main").innerHTML = v.html;
-  if (fresh) { const el = $("main").querySelector(".locked.fresh"); if (el) { const b = el.getBoundingClientRect(); confetti(b.left + b.width / 2, b.top + 20, 18); } fresh = false; }
+  fresh = false;
   // count up the round result
   $("main").querySelectorAll("[data-count]").forEach(el => { const to = Number(el.dataset.count); let i = 0; const st = setInterval(() => { el.textContent = Math.min(to, ++i); if (i >= to) clearInterval(st); }, Math.max(60, 700 / Math.max(1, to))); if (!to) el.textContent = 0; });
   if (typing) { const el = $(ae.id); if (el) { el.focus(); const L = el.value.length; try { el.setSelectionRange(L, L); } catch (e) {} } }
