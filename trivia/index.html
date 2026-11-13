@@ -14,9 +14,14 @@ body{padding:max(20px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-rig
 h1{font-size:34px;line-height:1}
 .sub{display:flex;gap:8px;align-items:center;margin:6px 0 20px;font-size:14px}
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.grid a{display:flex;flex-direction:column;align-items:center;justify-content:center;aspect-ratio:1;background:var(--surface);border:1px solid var(--line);border-radius:14px;text-decoration:none;color:var(--fg);padding:8px;text-align:center}
-.grid a:active{background:var(--hl)}
-.grid .n{font:700 44px/1 var(--display)}
+.grid a{display:flex;flex-direction:column;align-items:center;justify-content:center;aspect-ratio:1;background:color-mix(in srgb,var(--tc) 10%,var(--surface));border:2px solid color-mix(in srgb,var(--tc) 45%,var(--line));border-radius:16px;text-decoration:none;color:var(--fg);padding:8px;text-align:center;transition:transform .12s;animation:pop .45s cubic-bezier(.2,1.4,.4,1) both}
+.grid a:active{transform:scale(.94);background:color-mix(in srgb,var(--tc) 25%,var(--surface))}
+.grid a.me{background:var(--tc);border-color:var(--tc);color:#fff}
+.grid a.me .nm{color:#fff;opacity:.9}
+.grid .n{font:700 44px/1 var(--display);color:var(--tc)}
+.grid a.me .n{color:#fff}
+.hero{display:flex;align-items:center;gap:12px;margin-bottom:2px}
+.hero .leaf{font-size:40px;display:inline-block;animation:wiggle 2.4s ease-in-out infinite;transform-origin:50% 90%}
 .grid .nm{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
 .grid a.off{opacity:.4}
 .last{margin-top:18px;font-size:14px}
@@ -25,27 +30,28 @@ h1{font-size:34px;line-height:1}
 </head>
 <body>
 <div class="wrap">
-  <h1>Eco Cup Trivia</h1>
+  <div class="hero"><span class="leaf" aria-hidden="true">🌿</span><h1>Eco Cup Trivia</h1></div>
   <div class="sub"><span class="dot" id="dot"></span><span id="status" class="muted">Connecting…</span></div>
-  <p class="muted" style="margin:0 0 12px">Tap your team. Everyone on a team can open the same team page on as many phones as you like.</p>
+  <p style="margin:0 0 12px;font-size:17px">Tap your team to start answering. 📱 Everyone on your team can join on their own phone too.</p>
   <div class="grid" id="grid"></div>
   <p class="last" id="last" hidden></p>
 </div>
 <script type="module">
-import { TEAMS, esc, teamName } from "./js/core.js";
+import { TEAMS, esc, teamName, teamColor } from "./js/core.js";
 import { live, $ } from "./js/db.js";
 const q = location.search; // keep ?db= for testing
+let mine = null; try { mine = localStorage.getItem("trivia-team"); } catch (e) {}
 function render(data, ok) {
   $("dot").className = "dot" + (ok ? " live" : "");
   $("status").textContent = ok ? "Live" : "Can't reach the game. Check your connection.";
   const cfg = data.config || {};
-  $("grid").innerHTML = TEAMS.map(t => {
+  const html = TEAMS.map(t => {
     const off = cfg.teams?.[t]?.playing === false;
-    return `<a href="team/${q ? q + "&" : "?"}t=${t}" class="${off ? "off" : ""}" aria-label="${esc(teamName(cfg, t))}">
+    return `<a href="team/${q ? q + "&" : "?"}t=${t}" class="${off ? "off" : ""} ${String(t) === mine ? "me" : ""}" style="--tc:${teamColor(t)};animation-delay:${(t - 1) * 40}ms" aria-label="${esc(teamName(cfg, t))}">
       <span class="n">${t}</span><span class="nm">${esc(teamName(cfg, t))}</span></a>`;
   }).join("");
+  if ($("grid")._h !== html) { $("grid")._h = html; $("grid").innerHTML = html; } // only redraw (and re-animate) when something changed
 }
-let mine = null; try { mine = localStorage.getItem("trivia-team"); } catch (e) {}
 if (mine) { $("last").hidden = false; $("last").innerHTML = `Last time you were on <a href="team/${q ? q + "&" : "?"}t=${encodeURIComponent(mine)}">Team ${esc(mine)}</a>.`; }
 live(render);
 </script>
