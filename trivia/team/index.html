@@ -176,7 +176,7 @@ function view() {
   if (s.phase === "qprep") {
     const wager = R.scoring === "wager";
     return {
-      key: `qprep${r}.${n}|${tokKey}|${wager ? JSON.stringify(myWager(r, n) || null) + pick.w + JSON.stringify(D.wagers?.[r] || {}) + qpub(r, n).hint : ""}`,
+      key: `qprep${r}.${n}|${tokKey}|${wager ? JSON.stringify(myWager(r, n) || null) + pick.w + JSON.stringify(Object.entries(D.wagers?.[r] || {}).map(([k, x]) => [k, x?.[T]?.w])) + qpub(r, n).hint : ""}`,
       html: `<section class="card"><div class="muted">${esc(R.name)}</div><div class="big">Question ${n}${total ? ` of ${total}` : ""}</div><p class="muted" style="margin:4px 0 0">Get ready…</p></section>${wager ? wagerPanel(r, n) : ""}${tok}`,
     };
   }
