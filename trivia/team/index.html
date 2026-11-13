@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Eco Cup Trivia Team</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="../js/base.css">
+<style>
+/* One team's answering page. Any number of phones can open it; they all show the same locked-in decisions. */
+body{padding:0 max(16px,env(safe-area-inset-right)) 40px max(16px,env(safe-area-inset-left))}
+.wrap{max-width:560px;margin:0 auto}
+header{position:sticky;top:0;z-index:5;background:var(--bg);padding:max(12px,env(safe-area-inset-top)) 0 10px;border-bottom:1px solid var(--line)}
+.top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.top h1{font-size:28px;line-height:1}
+.where{font-size:14px;display:flex;gap:6px;align-items:center}
+.timer{height:8px;border-radius:4px;background:var(--line);margin-top:10px;overflow:hidden}
+.timer i{display:block;height:100%;background:var(--accent);width:100%;transition:width .2s linear}
+.timer.low i{background:var(--danger)}
+.secs{font:700 20px var(--display);min-width:3ch;text-align:right}
+main{padding-top:16px;display:grid;gap:14px}
+.big{font:700 26px/1.1 var(--display);text-transform:uppercase}
+.qtext{font-size:20px;font-weight:600;line-height:1.3;overflow-wrap:anywhere}
+.rules{margin:8px 0 0;padding-left:20px}
+.rules li{margin:4px 0}
+.mc{display:grid;gap:10px}
+.mc button{display:flex;align-items:center;gap:12px;text-align:left;min-height:64px;border:2px solid var(--k);background:color-mix(in srgb,var(--k) 10%,var(--surface));border-radius:12px;padding:10px 14px;font-weight:600;font-size:18px}
+.mc button .l{flex:none;width:36px;height:36px;border-radius:8px;background:var(--k);color:#fff;display:grid;place-items:center;font:700 22px var(--display)}
+.mc button.sel{background:var(--k);color:#fff}
+.mc button.sel .l{background:#fff;color:var(--k)}
+input[type=text],input[type=number]{width:100%;padding:14px;border:1px solid var(--line);border-radius:10px;background:var(--surface);font-size:20px}
+.num{display:flex;gap:10px;align-items:center}
+.num .unit{font-weight:600;font-size:18px;flex:none}
+input[type=range]{width:100%;height:40px;accent-color:var(--accent)}
+.range-ends{display:flex;justify-content:space-between;font-size:13px;color:var(--muted)}
+.submit{width:100%;padding:16px;font-size:19px}
+.locked{border:2px solid var(--accent);border-radius:14px;padding:16px;background:color-mix(in srgb,var(--accent) 8%,var(--surface))}
+.locked .k{font:700 14px var(--display);text-transform:uppercase;letter-spacing:.06em;color:var(--accent)}
+.locked .v{font-size:22px;font-weight:600;overflow-wrap:anywhere}
+.tokens{display:grid;gap:10px}
+.tok{display:block;width:100%;text-align:left;border:2px solid var(--line);background:var(--surface);border-radius:12px;padding:12px 14px}
+.tok b{font:700 19px var(--display);text-transform:uppercase}
+.tok ul{margin:4px 0 0;padding-left:18px;font-size:14px}
+.tok .why{font-size:13px;color:var(--muted)}
+.tok.sel{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,var(--surface))}
+.weights{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.weights button{aspect-ratio:1;border:2px solid var(--line);background:var(--surface);border-radius:12px;font:700 28px var(--display)}
+.weights button.sel{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.weights button:disabled{text-decoration:line-through}
+.hint{font-size:18px;font-weight:600}
+.stat{font:700 56px/1 var(--display)}
+.err{color:var(--danger);font-size:14px;min-height:1em}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <div class="top"><h1 id="tname">Team</h1><div class="where"><span class="dot" id="dot"></span><span id="where" class="muted"></span></div></div>
+  <div class="top" id="timerrow" hidden><div class="timer" id="timer" style="flex:1"><i id="bar"></i></div><span class="secs" id="secs"></span></div>
+</div></header>
+<div class="wrap"><main id="main"></main><p class="muted" style="font-size:13px;margin-top:28px"><a href="../" id="switch" style="color:inherit">Wrong team? Pick again</a></p></div>
+<script type="module">
+import { round, TOKENS, LETTERS, allowedTokens, tokensPlayedBefore, teamName, esc, fmtScore } from "../js/core.js";
+import { live, put, now, syncClock, SERVER_TS, ROOT, $, toast } from "../js/db.js";
+
+const params = new URLSearchParams(location.search);
+const T = String(params.get("t") || "");
+if (!/^[1-9]$/.test(T)) location.replace("../" + location.search.replace(/[?&]t=[^&]*/, ""));
+try { localStorage.setItem("trivia-team", T); } catch (e) {}
+$("switch").href = "../" + (params.get("db") ? "?db=" + encodeURIComponent(params.get("db")) : "");
+
+let D = {}, OK = false, lastKey = "", pick = {}; // pick = unsaved choices on this phone (token / weight / mc / number)
+const db = live((d, ok) => { D = d; OK = ok; render(); });
+syncClock();
+
+const S = () => D.state || { phase: "lobby" };
+const myAnswer = (r, n) => D.answers?.[r]?.[n]?.[T];
+const myWager = (r, n) => D.wagers?.[r]?.[n]?.[T];
+const myToken = r => D.tokens?.[r]?.[T];
+const qpub = (r, n) => D.q?.[r]?.[n] || {};
+const isOpen = s => s.phase === "open" && (!s.closeAt || now() < s.closeAt);
+
+async function save(path, value, done) {
+  try {
+    await put(`${ROOT}/${path}`, value);
+    db.local(path, { ...value, at: Date.now() });
+    done && done();
+  } catch (e) { toast("Didn't go through. Check your connection and try again."); }
+  render(true);
+}
+
+/* ---------- views ---------- */
+function tokenPanel(r) {
+  const mine = myToken(r);
+  if (mine) {
+    const k = Number(mine.k);
+    return `<div class="locked"><div class="k">Prats token for this round · locked</div><div class="v">${k ? `${TOKENS[k].name}: ${TOKENS[k].title}` : "No token"}</div></div>`;
+  }
+  if (S().tokenLock?.[r]) return "";
+  const played = tokensPlayedBefore(D.tokens, T, r), allowed = allowedTokens(played);
+  const card = k => {
+    const used = played.includes(k), ok = allowed.includes(k);
+    const why = used ? "Already used" : !ok ? (played.length ? "Not next in your order" : "Can't be played first") : "";
+    return `<button class="tok ${pick.token === k ? "sel" : ""}" data-token="${k}" ${ok ? "" : "disabled"}>
+      <b>${TOKENS[k].name}: ${TOKENS[k].title}</b>${why ? ` <span class="why">· ${why}</span>` : ""}
+      <ul>${TOKENS[k].lines.map(l => `<li>${esc(l)}</li>`).join("")}</ul></button>`;
+  };
+  const order = played.length ? `Your order: ${played.join(" → ")} → …` : "Your first token sets the order: 1 → 2 → 3 or 3 → 2 → 1.";
+  return `<section class="card"><h2 style="font-size:22px">Prats token?</h2>
+    <p class="muted" style="margin:4px 0 10px;font-size:14px">${order} Choose before the first question starts.</p>
+    <div class="tokens">${[1, 2, 3].map(card).join("")}
+      <button class="tok ${pick.token === 0 ? "sel" : ""}" data-token="0"><b>No token this round</b></button></div>
+    <button class="btn primary submit" style="margin-top:12px" id="tokconfirm" ${pick.token === undefined ? "disabled" : ""}>Confirm</button>
+    <p class="muted" style="font-size:13px;margin:6px 0 0">Once confirmed it can't be changed.</p></section>`;
+}
+
+function wagerPanel(r, n) {
+  const mine = myWager(r, n);
+  const hint = qpub(r, n).hint;
+  const hintHTML = hint ? `<div class="muted" style="font-size:13px">Hint</div><div class="hint">${esc(hint)}</div>` : "";
+  if (mine) return `<section class="card">${hintHTML}<div class="locked" style="margin-top:10px"><div class="k">Your weight · locked</div><div class="v">${esc(mine.w)}</div></div></section>`;
+  const used = new Set(Object.entries(D.wagers?.[r] || {}).filter(([qn]) => qn !== String(n)).map(([, w]) => Number(w?.[T]?.w)).filter(Boolean));
+  return `<section class="card">${hintHTML}
+    <h2 style="font-size:22px;margin-top:10px">Pick a weight</h2>
+    <p class="muted" style="margin:2px 0 10px;font-size:14px">A correct answer scores this many points. Each weight can be used once.</p>
+    <div class="weights">${Array.from({ length: 10 }, (_, i) => i + 1).map(w => `<button data-w="${w}" class="${pick.w === w ? "sel" : ""}" ${used.has(w) ? "disabled" : ""}>${w}</button>`).join("")}</div>
+    <button class="btn primary submit" style="margin-top:12px" id="wconfirm" ${pick.w ? "" : "disabled"}>Confirm weight</button></section>`;
+}
+
+function answerPad(r, n) {
+  const R = round(r), q = qpub(r, n), mine = myAnswer(r, n), s = S();
+  let html = q.text ? `<div class="qtext">${esc(q.text)}</div>` : `<div class="muted">Look at the big screen.</div>`;
+  if (mine) {
+    const shown = q.type === "mc" ? `${esc(mine.v)}${q.options?.[LETTERS.indexOf(mine.v)] ? ": " + esc(q.options[LETTERS.indexOf(mine.v)]) : ""}` : `${esc(mine.v)}${q.unit ? " " + esc(q.unit) : ""}`;
+    return html + `<div class="locked"><div class="k">Submitted · locked</div><div class="v">${shown}</div></div>`;
+  }
+  if (!isOpen(s)) return html + `<div class="locked" style="border-color:var(--line)"><div class="k" style="color:var(--muted)">Answers closed</div><div class="v">No answer</div></div>`;
+  if (q.type === "mc") {
+    const opts = (q.options || []).slice(0, 4);
+    html += `<div class="mc">${LETTERS.map((L, i) => `<button class="mc-${L.toLowerCase()} ${pick.mc === L ? "sel" : ""}" data-mc="${L}"><span class="l">${L}</span><span>${esc(opts[i] ?? "")}</span></button>`).join("")}</div>`;
+    if (!R.timed) html += `<button class="btn primary submit" id="submit" ${pick.mc ? "" : "disabled"}>Submit</button>`;
+    else html += `<p class="muted" style="font-size:14px;margin:0">Your first tap is your answer.</p>`;
+  } else if (q.type === "number") {
+    const min = Number(q.min ?? 0), max = Number(q.max ?? 100), step = Number(q.step || 1);
+    const v = pick.num ?? "";
+    html += `<input type="range" id="slider" min="${min}" max="${max}" step="${step}" value="${v === "" ? (min + max) / 2 : v}">
+      <div class="range-ends"><span>${esc(min)}${q.unit ? " " + esc(q.unit) : ""}</span><span>${esc(max)}${q.unit ? " " + esc(q.unit) : ""}</span></div>
+      <div class="num"><input type="number" id="numbox" inputmode="decimal" step="any" placeholder="Type a number" value="${esc(v)}">${q.unit ? `<span class="unit">${esc(q.unit)}</span>` : ""}</div>
+      <button class="btn primary submit" id="submit" ${v === "" ? "disabled" : ""}>Submit</button>`;
+  } else {
+    html += `<input type="text" id="textbox" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Type your answer" value="${esc(pick.text || "")}">
+      <button class="btn primary submit" id="submit" ${(pick.text || "").trim() ? "" : "disabled"}>Submit</button>`;
+  }
+  return html + `<p class="muted" style="font-size:13px;margin:0">Once submitted it can't be changed.</p>`;
+}
+
+function resultsPanel(r) {
+  const R = round(r), res = D.teamResults?.[r]?.[T];
+  if (!res) return `<section class="card"><div class="big">Round ${r} done</div><p class="muted">Your result shows here once the hosts confirm the round.</p></section>`;
+  const right = `<div class="muted">You got</div><div class="stat">${res.right} of ${res.total}</div><div class="muted">right this round</div>`;
+  const score = R.scoring === "closest" ? `Total error: <b>${fmtScore(r, res.score)}</b>` : R.scoring === "count" ? "" : `Round score: <b>${fmtScore(r, res.score)}</b>`;
+  return `<section class="card" style="text-align:center"><div class="big" style="margin-bottom:10px">Round ${r}: ${esc(R.name)}</div>${R.scoring === "closest" ? "" : right}${score ? `<p style="font-size:20px;margin:12px 0 0">${score}</p>` : ""}</section>`;
+}
+
+function view() {
+  const s = S(), r = Number(s.round) || 0, n = Number(s.q) || 0, R = r ? round(r) : null;
+  const total = Number(s.nq?.[r]) || 0;
+  if (!r || s.phase === "lobby") return { key: "lobby", html: `<section class="card"><div class="big">You're in</div><p class="muted">Waiting for the hosts to start. Keep this page open.</p></section>` };
+  if (s.phase === "roundEnd") return { key: `end${r}|${JSON.stringify(D.teamResults?.[r]?.[T] || null)}`, html: resultsPanel(r) };
+  const tokenOpen = !s.tokenLock?.[r] || myToken(r);
+  const tok = tokenOpen ? tokenPanel(r) : "";
+  const tokKey = `${s.tokenLock?.[r] ? 1 : 0}|${JSON.stringify(myToken(r) || null)}|${pick.token}`;
+  if (s.phase === "round") {
+    return { key: `round${r}|${tokKey}`, html: `<section class="card"><div class="muted">Round ${r} of 6</div><div class="big">${esc(R.name)}</div><ul class="rules">${R.rules.map(x => `<li>${esc(x)}</li>`).join("")}</ul></section>${tok}` };
+  }
+  if (s.phase === "qprep") {
+    const wager = R.scoring === "wager";
+    return {
+      key: `qprep${r}.${n}|${tokKey}|${wager ? JSON.stringify(myWager(r, n) || null) + pick.w + JSON.stringify(D.wagers?.[r] || {}) + qpub(r, n).hint : ""}`,
+      html: `<section class="card"><div class="muted">${esc(R.name)}</div><div class="big">Question ${n}${total ? ` of ${total}` : ""}</div><p class="muted" style="margin:4px 0 0">Get ready…</p></section>${wager ? wagerPanel(r, n) : ""}${tok}`,
+    };
+  }
+  // open / closed / reveal
+  const q = qpub(r, n);
+  const head = `<div class="muted">${esc(R.name)} · Question ${n}${total ? ` of ${total}` : ""}${R.scoring === "wager" && myWager(r, n) ? ` · weight ${esc(myWager(r, n).w)}` : ""}</div>`;
+  return {
+    key: `q${r}.${n}|${isOpen(s)}|${JSON.stringify(myAnswer(r, n) || null)}|${q.type}|${q.text}|${pick.mc}|${pick.num === undefined ? "" : "n"}|${(pick.text || "").trim() ? "t" : ""}|${tokKey}`,
+    html: `<section class="card" style="display:grid;gap:14px">${head}${answerPad(r, n)}</section>${tok}`,
+  };
+}
+
+function render(force) {
+  $("dot").className = "dot" + (OK ? " live" : "");
+  const s = S(), r = Number(s.round) || 0;
+  $("tname").textContent = teamName(D.config, T);
+  document.title = `${teamName(D.config, T)} · Eco Cup Trivia`;
+  $("where").textContent = OK ? (r ? `Round ${r}` : "Live") : "Reconnecting…";
+  // reset unsaved choices when the question or round changes
+  const ctx = `${s.round}.${s.q}.${s.phase === "round" ? "r" : ""}`;
+  if (pick._ctx !== ctx) { const keepTok = pick._ctx && pick._ctx.split(".")[0] === String(s.round) ? pick.token : undefined; pick = { _ctx: ctx, token: keepTok }; }
+  const v = view();
+  if (!force && v.key === lastKey) return;
+  // keep typing intact: don't rebuild while the text box has focus and nothing important changed
+  const ae = document.activeElement;
+  const typing = ae && (ae.id === "textbox" || ae.id === "numbox");
+  if (typing && lastKey.split("|")[0] === v.key.split("|")[0] && lastKey.split("|")[1] === v.key.split("|")[1] && !force) return;
+  lastKey = v.key;
+  $("main").innerHTML = v.html;
+  if (typing) { const el = $(ae.id); if (el) { el.focus(); const L = el.value.length; try { el.setSelectionRange(L, L); } catch (e) {} } }
+}
+
+/* ---------- timer ---------- */
+function tick() {
+  const s = S();
+  const show = s.phase === "open" && s.closeAt && s.startAt;
+  $("timerrow").hidden = !show;
+  if (show) {
+    const left = Math.max(0, s.closeAt - now()), totalMs = Math.max(1, s.closeAt - s.startAt);
+    $("bar").style.width = `${(left / totalMs) * 100}%`;
+    $("timer").classList.toggle("low", left < 5000);
+    $("secs").textContent = Math.ceil(left / 1000);
+    if (left <= 0 && lastKey.includes("|true|")) render(true);
+  }
+}
+setInterval(tick, 200);
+
+/* ---------- actions ---------- */
+$("main").addEventListener("click", e => {
+  const s = S(), r = Number(s.round), n = Number(s.q), R = round(r);
+  const tk = e.target.closest("[data-token]");
+  if (tk && !tk.disabled) { pick.token = Number(tk.dataset.token); render(true); return; }
+  if (e.target.closest("#tokconfirm")) {
+    if (pick.token === undefined || myToken(r) || s.tokenLock?.[r]) return;
+    const k = pick.token;
+    if (k && !allowedTokens(tokensPlayedBefore(D.tokens, T, r)).includes(k)) { toast("That token isn't allowed now."); return; }
+    save(`tokens/${r}/${T}`, { k, at: SERVER_TS }); return;
+  }
+  const wb = e.target.closest("[data-w]");
+  if (wb && !wb.disabled) { pick.w = Number(wb.dataset.w); render(true); return; }
+  if (e.target.closest("#wconfirm")) {
+    if (!pick.w || myWager(r, n)) return;
+    save(`wagers/${r}/${n}/${T}`, { w: pick.w, at: SERVER_TS }); return;
+  }
+  const mc = e.target.closest("[data-mc]");
+  if (mc) {
+    if (!isOpen(s) || myAnswer(r, n)) return;
+    pick.mc = mc.dataset.mc;
+    if (R.timed) submit(pick.mc); else render(true);
+    return;
+  }
+  if (e.target.closest("#submit")) {
+    const q = qpub(r, n);
+    if (q.type === "mc") submit(pick.mc);
+    else if (q.type === "number") { const v = Number(pick.num); if (pick.num !== "" && pick.num !== undefined && isFinite(v)) submit(v); }
+    else submit((pick.text || "").trim());
+  }
+});
+$("main").addEventListener("input", e => {
+  if (e.target.id === "textbox") { const had = !!(pick.text || "").trim(); pick.text = e.target.value; if (had !== !!pick.text.trim()) { const b = $("submit"); if (b) b.disabled = !pick.text.trim(); } }
+  if (e.target.id === "slider") { pick.num = e.target.value; const b = $("numbox"); if (b) b.value = e.target.value; const s = $("submit"); if (s) s.disabled = false; }
+  if (e.target.id === "numbox") { pick.num = e.target.value; const sl = $("slider"); if (sl && e.target.value !== "") sl.value = e.target.value; const s = $("submit"); if (s) s.disabled = e.target.value === ""; }
+});
+$("main").addEventListener("keydown", e => { if (e.key === "Enter" && (e.target.id === "textbox" || e.target.id === "numbox")) { e.preventDefault(); $("submit")?.click(); } });
+
+let sending = false;
+async function submit(v) {
+  const s = S(), r = Number(s.round), n = Number(s.q);
+  if (sending || v === undefined || v === "" || myAnswer(r, n)) return;
+  if (!isOpen(s)) { toast("Time's up, answers are closed."); render(true); return; }
+  sending = true;
+  const tap = Math.round(now());
+  await save(`answers/${r}/${n}/${T}`, { v, t: tap, at: SERVER_TS });
+  sending = false;
+}
+</script>
+</body>
+</html>

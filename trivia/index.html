@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Eco Cup Trivia</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="js/base.css">
+<style>
+/* Hub: players tap their team and go to that team's answering page. */
+body{padding:max(20px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 40px max(16px,env(safe-area-inset-left))}
+.wrap{max-width:560px;margin:0 auto}
+h1{font-size:34px;line-height:1}
+.sub{display:flex;gap:8px;align-items:center;margin:6px 0 20px;font-size:14px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.grid a{display:flex;flex-direction:column;align-items:center;justify-content:center;aspect-ratio:1;background:var(--surface);border:1px solid var(--line);border-radius:14px;text-decoration:none;color:var(--fg);padding:8px;text-align:center}
+.grid a:active{background:var(--hl)}
+.grid .n{font:700 44px/1 var(--display)}
+.grid .nm{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.grid a.off{opacity:.4}
+.last{margin-top:18px;font-size:14px}
+.last a{color:var(--accent);font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Eco Cup Trivia</h1>
+  <div class="sub"><span class="dot" id="dot"></span><span id="status" class="muted">Connecting…</span></div>
+  <p class="muted" style="margin:0 0 12px">Tap your team. Everyone on a team can open the same team page on as many phones as you like.</p>
+  <div class="grid" id="grid"></div>
+  <p class="last" id="last" hidden></p>
+</div>
+<script type="module">
+import { TEAMS, esc, teamName } from "./js/core.js";
+import { live, $ } from "./js/db.js";
+const q = location.search; // keep ?db= for testing
+function render(data, ok) {
+  $("dot").className = "dot" + (ok ? " live" : "");
+  $("status").textContent = ok ? "Live" : "Can't reach the game. Check your connection.";
+  const cfg = data.config || {};
+  $("grid").innerHTML = TEAMS.map(t => {
+    const off = cfg.teams?.[t]?.playing === false;
+    return `<a href="team/${q ? q + "&" : "?"}t=${t}" class="${off ? "off" : ""}" aria-label="${esc(teamName(cfg, t))}">
+      <span class="n">${t}</span><span class="nm">${esc(teamName(cfg, t))}</span></a>`;
+  }).join("");
+}
+let mine = null; try { mine = localStorage.getItem("trivia-team"); } catch (e) {}
+if (mine) { $("last").hidden = false; $("last").innerHTML = `Last time you were on <a href="team/${q ? q + "&" : "?"}t=${encodeURIComponent(mine)}">Team ${esc(mine)}</a>.`; }
+live(render);
+</script>
+</body>
+</html>
