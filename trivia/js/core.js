@@ -11,7 +11,7 @@ export const TAP_WINDOW_MS = 2000; // a phone's tap time is trusted if it is at 
 // count = 1 per correct; wager = weight if correct; closest = summed % error, lower wins.
 export const ROUNDS = [
   { n: 1, name: "Showdown", scoring: "fastest5", timed: true, limit: 30,
-    rules: ["Multiple choice locks in the moment you tap", "30 seconds per question", "The 5 fastest correct teams score 5, 4, 3, 2 and 1"] },
+    rules: ["Multiple choice locks the moment you tap; typed answers lock when you press Submit", "30 seconds per question", "The 5 fastest correct teams score 5, 4, 3, 2 and 1"] },
   { n: 2, name: "Picture", scoring: "count", limit: 60,
     rules: ["Identify what's on the big screen", "Type or pick your answer, then press Submit", "1 point per correct answer"] },
   { n: 3, name: "Music", scoring: "count", limit: 60,
@@ -91,6 +91,7 @@ export function matchText(given, keys) {
     const n = normText(k), ns = n.replace(/ /g, "");
     if (!n) continue;
     if (g === n || gs === ns) return "yes";
+    if (/^\d+$/.test(ns) && /^\d+$/.test(gs)) continue; // numbers must match exactly: 13 is not a typo of 12
     const d = lev(gs, ns), tol = tolerance(ns.length);
     if (d <= tol) { best = "close"; continue; }
     if (best === "no" && ((ns.length >= 4 && (gs.includes(ns) || ns.includes(gs)) && gs.length >= 3) || d <= tol * 2 + 1)) best = "maybe";
