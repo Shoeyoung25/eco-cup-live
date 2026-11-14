@@ -192,11 +192,19 @@ function revealEggs(s, q, rev) {
 
 /* ---------- media ---------- */
 const mediaCache = {}, loading = {}, tries = {};
+// nothing uploaded under that name: use the copy shipped with the site in ../media/ (key "r2_q1_logo_png" -> r2_q1_logo.png)
+const MIME = { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp", svg: "image/svg+xml", mp3: "audio/mpeg", m4a: "audio/mp4", aac: "audio/aac", wav: "audio/wav", ogg: "audio/ogg" };
+async function builtIn(key) {
+  const x = String(key).match(/_([a-z0-9]+)$/); if (!x || !MIME[x[1]]) return null;
+  const url = new URL(`../media/${key.slice(0, -x[0].length)}.${x[1]}`, location.href).href;
+  const r = await fetch(url, { method: "HEAD", cache: "no-store" }).catch(() => null);
+  return r && r.ok ? { type: MIME[x[1]], data: url } : null;
+}
 function media(key) {
   if (!key) return null;
   if (mediaCache[key]) return mediaCache[key];
-  // not in the database yet (operator still copying it in): try again a few seconds later instead of giving up
-  if (!loading[key]) loading[key] = get(`${MEDIA}/${encodeURIComponent(key)}`).then(m => { if (!m) throw 0; mediaCache[key] = m; render(true); return m; }).catch(() => { tries[key] = (tries[key] || 0) + 1; setTimeout(() => { delete loading[key]; if (tries[key] < 200) media(key); }, 3000); return null; });
+  // not in the database or the site yet: try again a few seconds later instead of giving up
+  if (!loading[key]) loading[key] = get(`${MEDIA}/${encodeURIComponent(key)}`).then(m => m || builtIn(key)).then(m => { if (!m) throw 0; mediaCache[key] = m; render(true); return m; }).catch(() => { tries[key] = (tries[key] || 0) + 1; setTimeout(() => { delete loading[key]; if (tries[key] < 200) media(key); }, 3000); return null; });
   return null;
 }
 // audio: plays twice automatically when the question opens; the operator can trigger a replay
